@@ -7,12 +7,24 @@ import {
   AudioPlayer,
   entersState,
   VoiceConnectionStatus,
+  EndBehaviorType,
 } from '@discordjs/voice';
+import { createWriteStream, createReadStream } from 'fs';
+import { pipeline } from 'stream';
+import prism from 'prism-media';
+import OpenAI from 'openai';
 
 export class GameManager {
   private isGameActive: boolean = false;
   private voiceConnection: VoiceConnection | null = null;
   private audioPlayer: AudioPlayer | null = null;
+  private openai: OpenAI;
+
+  constructor() {
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY, // OpenAIのAPIキーを.envに設定
+    });
+  }
 
   async startGame(interaction: CommandInteraction) {
     if (this.isGameActive) {
@@ -52,11 +64,52 @@ export class GameManager {
 
     this.isGameActive = true;
 
-    // Example: Announce the start of the game
-    const resource = createAudioResource('./audio/game_start.wav'); // Replace with your audio file
-    this.audioPlayer.play(resource);
+    // Start listening to audio
+    this.listenToAudio();
+  }
 
-    // ...initialize NG words and other game logic...
+  private listenToAudio() {
+    if (!this.voiceConnection) return;
+
+    const receiver = this.voiceConnection.receiver;
+
+    receiver.speaking.on('start', (userId) => {
+      console.log(`User ${userId} started speaking`);
+
+      const audioStream = receiver.subscribe(userId, {
+        end: {
+          behavior: EndBehaviorType.AfterSilence,
+          duration: 1000, // 1秒間の無音で終了
+        },
+      });
+
+      const outputPath = `./recordings/${userId}-${Date.now()}.pcm`;
+      const pcmStream = new prism.opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 });
+      const writeStream = createWriteStream(outputPath);
+
+      pipeline(audioStream, pcmStream, writeStream, (err) => {
+        if (err) {
+          console.error('Error processing audio stream:', err);
+        } else {
+          console.log(`Audio saved to ${outputPath}`);
+          this.transcribeAudio(outputPath);
+        }
+      });
+    });
+  }
+
+  private async transcribeAudio(filePath: string) {
+    try {
+      const response = await this.openai.audio.transcriptions.create(
+        { file: createReadStream(filePath), model: 'whisper-1' },
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      console.log('Transcription result:', response.text);
+      // TODO: Handle NG word detection logic here
+    } catch (error) {
+      console.error('Error during transcription:', error);
+    }
   }
 
   async endGame(interaction: CommandInteraction) {
@@ -78,6 +131,5 @@ export class GameManager {
 
     this.isGameActive = false;
     await interaction.reply('The game has ended!');
-    // ...clean up game state...
   }
 }
