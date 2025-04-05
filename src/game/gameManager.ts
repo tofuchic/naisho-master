@@ -103,16 +103,31 @@ export class GameManager {
   }
 
   private async transcribeAudio(filePath: string) {
-    try {
-      const response = await this.openai.audio.transcriptions.create(
-        { file: createReadStream(filePath), model: 'whisper-1' },
-        { headers: { 'Content-Type': 'multipart/form-data' } }
-      );
+    const maxRetries = 3; // 最大リトライ回数
+    let attempt = 0;
 
-      console.log('Transcription result:', response.text);
-      // TODO: Handle NG word detection logic here
-    } catch (error) {
-      console.error('Error during transcription:', error);
+    while (attempt < maxRetries) {
+      try {
+        const response = await this.openai.audio.transcriptions.create(
+          { file: createReadStream(filePath), model: 'whisper-1' },
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+
+        console.log('Transcription result:', response.text);
+        // TODO: Handle NG word detection logic here
+        return; // 成功した場合は終了
+      } catch (error) {
+        attempt++;
+        console.error(`Error during transcription (attempt ${attempt}):`, error);
+
+        if (attempt >= maxRetries) {
+          console.error('Max retries reached. Transcription failed.');
+          return;
+        }
+
+        // リトライ前に少し待機
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
     }
   }
 
