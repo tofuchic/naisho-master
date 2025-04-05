@@ -27,12 +27,16 @@
 1. Discord Developer PortalでBotを作成し、トークンを取得します。
 2. 必要な依存関係をインストールします:
    ```bash
-   npm install discord.js @discordjs/voice
+   npm install
    ```
-3. `bot.js` ファイルにトークンを設定します。
+3. `.env` ファイルにトークンを設定します。
+1. Botをビルドします:
+   ```bash
+   npx tsc
+   ```
 4. Botを起動します:
    ```bash
-   node bot.js
+   node dist/index.js
    ```
 
 ## 使用方法
