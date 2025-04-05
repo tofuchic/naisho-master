@@ -93,11 +93,19 @@ export class GameManager {
 
       pipeline(audioStream, pcmStream, writeStream, (err) => {
         if (err) {
-          console.error('Error processing audio stream:', err);
+          if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') {
+            console.error('Stream was prematurely closed. This may happen if the user stops speaking abruptly.');
+          } else {
+            console.error('Error processing audio stream:', err);
+          }
         } else {
           console.log(`Audio saved to ${outputPath}`);
           this.transcribeAudio(outputPath);
         }
+      });
+
+      audioStream.on('close', () => {
+        console.log(`Audio stream for user ${userId} has closed.`);
       });
     });
   }
