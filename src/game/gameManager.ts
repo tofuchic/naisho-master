@@ -64,6 +64,10 @@ export class GameManager {
 
     this.isGameActive = true;
 
+    // Example: Announce the start of the game
+    const resource = createAudioResource('./audio/game_start.wav'); // Replace with your audio file
+    this.audioPlayer.play(resource);
+
     // Start listening to audio
     this.listenToAudio();
   }
