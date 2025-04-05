@@ -1,9 +1,18 @@
 import { CommandInteraction, GuildMember, VoiceChannel } from 'discord.js';
-import { joinVoiceChannel, VoiceConnection } from '@discordjs/voice';
+import {
+  joinVoiceChannel,
+  VoiceConnection,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayer,
+  entersState,
+  VoiceConnectionStatus,
+} from '@discordjs/voice';
 
 export class GameManager {
   private isGameActive: boolean = false;
   private voiceConnection: VoiceConnection | null = null;
+  private audioPlayer: AudioPlayer | null = null;
 
   async startGame(interaction: CommandInteraction) {
     if (this.isGameActive) {
@@ -27,8 +36,26 @@ export class GameManager {
       adapterCreator: voiceChannel.guild.voiceAdapterCreator,
     });
 
+    // Wait for the connection to be ready
+    try {
+      await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 10_000);
+      await interaction.reply('The game has started! NG words have been set.');
+    } catch (error) {
+      console.error('Failed to join voice channel:', error);
+      await interaction.reply('Failed to join the voice channel.');
+      return;
+    }
+
+    // Initialize the audio player
+    this.audioPlayer = createAudioPlayer();
+    this.voiceConnection.subscribe(this.audioPlayer);
+
     this.isGameActive = true;
-    await interaction.reply('The game has started! NG words have been set.');
+
+    // Example: Announce the start of the game
+    const resource = createAudioResource('./audio/game_start.wav'); // Replace with your audio file
+    this.audioPlayer.play(resource);
+
     // ...initialize NG words and other game logic...
   }
 
@@ -42,6 +69,11 @@ export class GameManager {
     if (this.voiceConnection) {
       this.voiceConnection.destroy();
       this.voiceConnection = null;
+    }
+
+    if (this.audioPlayer) {
+      this.audioPlayer.stop();
+      this.audioPlayer = null;
     }
 
     this.isGameActive = false;
