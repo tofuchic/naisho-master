@@ -41,7 +41,11 @@
 
 ## 使用方法
 1. DiscordサーバーにBotを招待します。
-    - `APPLICATION_ID`を作成したDISCORDアプリケーションのIDに上書きして、アクセスします
-      - https://discord.com/oauth2/authorize?client_id=APPLICATION_ID&permissions=3214336&scope=bot%20applications.commands
+   - `APPLICATION_ID`を作成したDISCORDアプリケーションのIDに上書きして、アクセスします
+     - https://discord.com/oauth2/authorize?client_id=APPLICATION_ID&permissions=3214336&scope=bot%20applications.commands
+1. 追加したBotにスラッシュコマンドを設定します
+   ```bash
+   node dist/registerCommands.js
+   ```
 2. ボイスチャンネルに参加し、`!start` コマンドを送信してゲームを開始します。
 3. `!stop` コマンドでゲームを終了します。
