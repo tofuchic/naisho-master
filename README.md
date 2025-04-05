@@ -24,11 +24,11 @@
 - ボイスチャンネルに入室中は全てのプレイヤーの音声を文字起こしし、内部に記録します。
 
 ## セットアップ
-1. Discord Developer PortalでBotを作成し、トークンを取得します。
 2. 必要な依存関係をインストールします:
    ```bash
    npm install
    ```
+1. Discord Developer PortalでBotを作成し、トークンを取得します。
 3. `.env` ファイルにトークンを設定します。
 1. Botをビルドします:
    ```bash
@@ -41,5 +41,7 @@
 
 ## 使用方法
 1. DiscordサーバーにBotを招待します。
+    - `APPLICATION_ID`を作成したDISCORDアプリケーションのIDに上書きして、アクセスします
+      - https://discord.com/oauth2/authorize?client_id=APPLICATION_ID&permissions=3214336&scope=bot%20applications.commands
 2. ボイスチャンネルに参加し、`!start` コマンドを送信してゲームを開始します。
 3. `!stop` コマンドでゲームを終了します。
