@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@discordjs/voice": "^0.18.0",
+    "@types/node": "^22.14.0",
+    "discord.js": "^14.18.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
