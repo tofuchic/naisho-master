@@ -17,6 +17,8 @@
     "ts-jest": "^29.3.1"
   },
   "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
     "test": "jest"
   }
 }
