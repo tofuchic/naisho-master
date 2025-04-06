@@ -9,12 +9,13 @@ import {
   VoiceConnectionStatus,
   EndBehaviorType,
 } from '@discordjs/voice';
-import { createWriteStream, createReadStream } from 'fs';
+import * as fs from 'fs';
 import { pipeline } from 'stream';
 import prism from 'prism-media';
 import OpenAI from 'openai';
 import { transcribeAudio } from '../utils/transcription';
 import path from 'path';
+import { OpusEncoder } from '@discordjs/opus';
 
 export class GameManager {
   private isGameActive: boolean = false;
@@ -101,9 +102,22 @@ export class GameManager {
         channels: 2,
         frameSize: 960,
       });
-      const writeStream = createWriteStream(outputPath);
 
-      pipeline(audioStream, pcmStream, writeStream, async (err) => {
+      // Let's add some logging to the stream to make sure data is flowing
+      const logStream = new (require('stream').Transform)({
+        transform(
+          chunk: Buffer,
+          encoding: BufferEncoding,
+          callback: (error?: Error | null, data?: Buffer) => void
+        ): void {
+          //console.log(`Received ${chunk.length} bytes of data.`);
+          callback(null, chunk);
+        },
+      });
+
+      const writeStream = fs.createWriteStream(outputPath);
+
+      pipeline(audioStream, pcmStream, logStream, writeStream, async (err) => {
         if (err) {
           if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') {
             console.error(
