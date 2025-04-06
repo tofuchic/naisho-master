@@ -96,49 +96,29 @@ export class GameManager {
         },
       });
 
-      const outputPath = `./recordings/${userId}-${Date.now()}.pcm`;
+      const outputPath = `./recordings/${userId}-${Date.now()}.wav`;
       const pcmStream = new prism.opus.Decoder({
         rate: 48000,
         channels: 2,
         frameSize: 960,
       });
 
-      // Let's add some logging to the stream to make sure data is flowing
-      const logStream = new (require('stream').Transform)({
-        transform(
-          chunk: Buffer,
-          encoding: BufferEncoding,
-          callback: (error?: Error | null, data?: Buffer) => void
-        ): void {
-          //console.log(`Received ${chunk.length} bytes of data.`);
-          callback(null, chunk);
-        },
-      });
-
       const writeStream = fs.createWriteStream(outputPath);
 
-      pipeline(audioStream, pcmStream, logStream, writeStream, async (err) => {
-        if (err) {
-          if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') {
-            console.error(
-              'Stream was prematurely closed. This may happen if the user stops speaking abruptly.'
-            );
-          } else {
-            console.error('Error processing audio stream:', err);
-          }
-        } else {
-          console.log(`Audio saved to ${outputPath}`);
-          try {
-            const trascription = await transcribeAudio(
-              path.join(
-                __dirname, // Use __dirname to resolve the directory of the current file
-                '../..',
-                outputPath
-              )
-            );
-          } catch (transcriptionError) {
-            console.error('Error transcribing audio:', transcriptionError);
-          }
+      audioStream.pipe(pcmStream).pipe(writeStream);
+
+      writeStream.on('finish', async () => {
+        console.log(`Audio saved to ${outputPath}`);
+        try {
+          const trascription = await transcribeAudio(
+            path.join(
+              __dirname, // Use __dirname to resolve the directory of the current file
+              '../..',
+              outputPath
+            )
+          );
+        } catch (transcriptionError) {
+          console.error('Error transcribing audio:', transcriptionError);
         }
       });
 
