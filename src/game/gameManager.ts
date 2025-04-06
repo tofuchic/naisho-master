@@ -16,6 +16,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import { promisify } from 'util';
+import { v4 as uuidv4 } from 'uuid'; // UUID生成用ライブラリを追加
 
 const mkdir = promisify(fs.mkdir);
 
@@ -24,6 +25,8 @@ export class GameManager {
   private voiceConnection: VoiceConnection | null = null;
   private audioPlayer: AudioPlayer | null = null;
   private openai: OpenAI;
+  private recordingsDir: string = './recordings';
+  private isRecordingsDirInitialized: boolean = false;
 
   constructor() {
     this.openai = new OpenAI({
@@ -83,6 +86,18 @@ export class GameManager {
     this.listenToAudio();
   }
 
+  private async ensureRecordingsDir(): Promise<void> {
+    if (!this.isRecordingsDirInitialized) {
+      try {
+        await mkdir(this.recordingsDir, { recursive: true });
+        this.isRecordingsDirInitialized = true;
+      } catch (err) {
+        console.error(`Failed to create recordings directory: ${err}`);
+        throw err;
+      }
+    }
+  }
+
   private listenToAudio(): void {
     if (!this.voiceConnection) return;
 
@@ -91,16 +106,16 @@ export class GameManager {
     receiver.speaking.on('start', async (userId) => {
       console.log(`User ${userId} started speaking`);
 
-      const recordingsDir = './recordings';
-      const outputPath = `${recordingsDir}/${userId}-${Date.now()}-16k.wav`;
-
       // Ensure the recordings directory exists
       try {
-        await mkdir(recordingsDir, { recursive: true });
+        await this.ensureRecordingsDir();
       } catch (err) {
-        console.error(`Failed to create recordings directory: ${err}`);
+        console.error('Error ensuring recordings directory:', err);
         return;
       }
+
+      const uniqueFileName = `${userId}-${uuidv4()}-16k.wav`;
+      const outputPath = path.join(this.recordingsDir, uniqueFileName);
 
       const audioStream = receiver.subscribe(userId, {
         end: {
