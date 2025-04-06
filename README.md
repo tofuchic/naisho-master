@@ -36,7 +36,7 @@
 1. `.env` ファイルにトークンを設定します。
 1. Botをビルドします:
    ```bash
-   npx run build
+   npm run build
    ```
 1. 実行できるかテストします。
    ```bash
