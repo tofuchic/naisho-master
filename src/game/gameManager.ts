@@ -13,6 +13,8 @@ import { createWriteStream, createReadStream } from 'fs';
 import { pipeline } from 'stream';
 import prism from 'prism-media';
 import OpenAI from 'openai';
+import { transcribeAudio } from '../utils/transcription';
+import path from 'path';
 
 export class GameManager {
   private isGameActive: boolean = false;
@@ -78,7 +80,7 @@ export class GameManager {
     this.listenToAudio();
   }
 
-  private listenToAudio() {
+  private listenToAudio(): void {
     if (!this.voiceConnection) return;
 
     const receiver = this.voiceConnection.receiver;
@@ -101,7 +103,7 @@ export class GameManager {
       });
       const writeStream = createWriteStream(outputPath);
 
-      pipeline(audioStream, pcmStream, writeStream, (err) => {
+      pipeline(audioStream, pcmStream, writeStream, async (err) => {
         if (err) {
           if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') {
             console.error(
@@ -112,7 +114,17 @@ export class GameManager {
           }
         } else {
           console.log(`Audio saved to ${outputPath}`);
-          this.transcribeAudio(outputPath);
+          try {
+            const trascription = await transcribeAudio(
+              path.join(
+                __dirname, // Use __dirname to resolve the directory of the current file
+                '../..',
+                outputPath
+              )
+            );
+          } catch (transcriptionError) {
+            console.error('Error transcribing audio:', transcriptionError);
+          }
         }
       });
 
@@ -120,38 +132,6 @@ export class GameManager {
         console.log(`Audio stream for user ${userId} has closed.`);
       });
     });
-  }
-
-  private async transcribeAudio(filePath: string) {
-    const maxRetries = 3; // 最大リトライ回数
-    let attempt = 0;
-
-    while (attempt < maxRetries) {
-      try {
-        const response = await this.openai.audio.transcriptions.create(
-          { file: createReadStream(filePath), model: 'whisper-1' },
-          { headers: { 'Content-Type': 'multipart/form-data' } }
-        );
-
-        console.log('Transcription result:', response.text);
-        // TODO: Handle NG word detection logic here
-        return; // 成功した場合は終了
-      } catch (error) {
-        attempt++;
-        console.error(
-          `Error during transcription (attempt ${attempt}):`,
-          error
-        );
-
-        if (attempt >= maxRetries) {
-          console.error('Max retries reached. Transcription failed.');
-          return;
-        }
-
-        // リトライ前に少し待機
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-    }
   }
 
   async endGame(interaction: CommandInteraction) {
