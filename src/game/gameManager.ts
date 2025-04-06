@@ -15,6 +15,9 @@ import { transcribeAudio } from '../utils/transcription';
 import path from 'path';
 import { spawn } from 'child_process';
 import fs from 'fs';
+import { promisify } from 'util';
+
+const mkdir = promisify(fs.mkdir);
 
 export class GameManager {
   private isGameActive: boolean = false;
@@ -85,8 +88,19 @@ export class GameManager {
 
     const receiver = this.voiceConnection.receiver;
 
-    receiver.speaking.on('start', (userId) => {
+    receiver.speaking.on('start', async (userId) => {
       console.log(`User ${userId} started speaking`);
+
+      const recordingsDir = './recordings';
+      const outputPath = `${recordingsDir}/${userId}-${Date.now()}-16k.wav`;
+
+      // Ensure the recordings directory exists
+      try {
+        await mkdir(recordingsDir, { recursive: true });
+      } catch (err) {
+        console.error(`Failed to create recordings directory: ${err}`);
+        return;
+      }
 
       const audioStream = receiver.subscribe(userId, {
         end: {
@@ -94,8 +108,6 @@ export class GameManager {
           duration: 1000, // 1秒間の無音で終了
         },
       });
-
-      const output16kPath = `./recordings/${userId}-${Date.now()}-16k.wav`;
 
       // FFmpegプロセスを開始（直接16kHzに変換）
       // prettier-ignore
@@ -106,7 +118,7 @@ export class GameManager {
         '-i', 'pipe:0', // 標準入力から読み取る
         '-ar', '16000', // 出力サンプリングレートを16kHzに変更
         '-y', // 上書き許可
-        output16kPath, // 出力ファイル
+        outputPath, // 出力ファイル
       ]);
 
       const pcmStream = new prism.opus.Decoder({
@@ -115,44 +127,50 @@ export class GameManager {
         frameSize: 960,
       });
 
-      // PCMデータをFFmpegにパイプ
+      // Pipe PCM data to FFmpeg
       audioStream.pipe(pcmStream).pipe(ffmpeg.stdin);
 
-      // FFmpegの標準エラー出力をログに出力
+      // Log FFmpeg stderr
       ffmpeg.stderr.on('data', (data) => {
         console.error(`FFmpeg stderr: ${data.toString()}`);
       });
 
-      // FFmpegプロセスの終了時にstdinを閉じる
-      ffmpeg.stdin.on('error', (err) => {
-        if ((err as any).code !== 'EPIPE') {
-          console.error('FFmpeg stdin error:', err);
-        }
-      });
-
+      // Handle FFmpeg process close
       ffmpeg.on('close', async (code) => {
         if (code === 0) {
-          console.log(`Audio converted to 16kHz and saved to ${output16kPath}`);
+          console.log(`Audio converted to 16kHz and saved to ${outputPath}`);
           try {
-            // 音声ファイルを処理（例: テキスト変換）
-            await this.processTranscription(output16kPath);
+            await this.processTranscription(outputPath);
           } catch (transcriptionError) {
             console.error('Error transcribing audio:', transcriptionError);
+          } finally {
+            // Clean up the file
+            fs.unlink(outputPath, (err) => {
+              if (err) console.error(`Failed to delete ${outputPath}:`, err);
+              else console.log(`Deleted file: ${outputPath}`);
+            });
           }
         } else {
           console.error(`FFmpeg process exited with code ${code}`);
         }
       });
 
+      // Handle FFmpeg errors
       ffmpeg.on('error', (error) => {
         console.error('FFmpeg error:', error);
       });
 
+      // Handle audio stream close
       audioStream.on('close', () => {
         console.log(`Audio stream for user ${userId} has closed.`);
         if (!ffmpeg.killed) {
           ffmpeg.stdin.end();
         }
+      });
+
+      // Handle audio stream errors
+      audioStream.on('error', (error) => {
+        console.error(`Audio stream error for user ${userId}:`, error);
       });
     });
   }
@@ -160,9 +178,7 @@ export class GameManager {
   private async processTranscription(filePath: string): Promise<void> {
     try {
       const transcription = await transcribeAudio(
-        path.join(__dirname, '../..', filePath),
-        false,
-        true
+        path.join(__dirname, '../..', filePath)
       );
       console.log('Transcription result:', transcription);
       // 必要に応じて追加処理を実装
