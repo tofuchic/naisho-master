@@ -12,7 +12,7 @@ async function transcribeAudio(filePath: string) {
     const transcription = await nodewhisper(filePath, {
       modelName: 'base', // 使用するモデル
       autoDownloadModelName: 'base', // モデルが存在しない場合に自動ダウンロード
-      removeWavFileAfterTranscription: true, // 変換後にwavファイルを削除
+      removeWavFileAfterTranscription: false, // 変換後にwavファイルを削除しない
       withCuda: false, // CUDAを使用しない
       logger: console, // ログ出力
       whisperOptions: {
