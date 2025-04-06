@@ -118,6 +118,13 @@ export class GameManager {
       // PCMデータをFFmpegにパイプ
       audioStream.pipe(pcmStream).pipe(ffmpeg.stdin);
 
+      // FFmpegプロセスの終了時にstdinを閉じる
+      ffmpeg.stdin.on('error', (err) => {
+        if ((err as any).code !== 'EPIPE') {
+          console.error('FFmpeg stdin error:', err);
+        }
+      });
+
       ffmpeg.on('close', (code) => {
         if (code === 0) {
           console.log(`Audio saved to ${outputPath}`);
@@ -180,6 +187,10 @@ export class GameManager {
 
       audioStream.on('close', () => {
         console.log(`Audio stream for user ${userId} has closed.`);
+        // FFmpegプロセスが終了していない場合、stdinを閉じる
+        if (!ffmpeg.killed) {
+          ffmpeg.stdin.end();
+        }
       });
     });
   }
