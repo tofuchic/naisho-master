@@ -47,4 +47,17 @@ describe('transcribeAudio Tests', () => {
     expect(result.length).toBeGreaterThan(0);
     expect(result).toContain('発言');
   });
+
+  it.only('should return a non-empty transcription result for 48kHz PCM', async () => {
+    // テスト用の音声ファイルパス
+    const testFilePath = path.resolve(
+      __dirname,
+      '../recordings/test_audio_16bit_48k.pcm'
+    );
+
+    const result = await transcribeAudio(testFilePath, true, true);
+
+    expect(result.length).toBeGreaterThan(0);
+    expect(result).toContain('発言');
+  });
 });
