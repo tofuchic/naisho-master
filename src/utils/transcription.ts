@@ -2,6 +2,7 @@ import { nodewhisper } from 'nodejs-whisper';
 
 export async function transcribeAudio(
   filePath: string,
+  outputInText: boolean = false,
   removeWavFileAfterTranscription: boolean = false
 ): Promise<string> {
   try {
@@ -16,7 +17,7 @@ export async function transcribeAudio(
       logger: console, // ログ出力
       whisperOptions: {
         language: 'ja', // 日本語を指定
-        outputInText: true, // テキスト出力
+        outputInText: outputInText, // テキスト出力
       },
     });
 

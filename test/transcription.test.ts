@@ -11,7 +11,7 @@ describe('transcribeAudio Tests', () => {
       '../recordings/test_audio_16k.wav'
     );
 
-    const result = await transcribeAudio(testFilePath);
+    const result = await transcribeAudio(testFilePath, true);
 
     expect(result.length).toBeGreaterThan(0);
     expect(result).toContain('発言');
@@ -25,7 +25,7 @@ describe('transcribeAudio Tests', () => {
     );
 
     try {
-      await transcribeAudio(testFilePath);
+      await transcribeAudio(testFilePath, true);
       // エラーが発生しなかった場合は失敗
       fail('Expected an error to be thrown, but none was thrown.');
     } catch (error) {
@@ -42,7 +42,7 @@ describe('transcribeAudio Tests', () => {
       '../recordings/test_audio_16bit_16k.pcm'
     );
 
-    const result = await transcribeAudio(testFilePath, true);
+    const result = await transcribeAudio(testFilePath, true, true);
 
     expect(result.length).toBeGreaterThan(0);
     expect(result).toContain('発言');
