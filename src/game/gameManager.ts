@@ -95,18 +95,18 @@ export class GameManager {
         },
       });
 
-      const outputPath = `./recordings/${userId}-${Date.now()}.wav`;
       const output16kPath = `./recordings/${userId}-${Date.now()}-16k.wav`;
 
-      // FFmpegプロセスを開始
+      // FFmpegプロセスを開始（直接16kHzに変換）
       // prettier-ignore
       const ffmpeg = spawn('ffmpeg', [
         '-f', 's16le', // PCMフォーマット
-        '-ar', '48000', // サンプリングレート
+        '-ar', '48000', // 入力サンプリングレート
         '-ac', '2', // チャンネル数
         '-i', 'pipe:0', // 標準入力から読み取る
+        '-ar', '16000', // 出力サンプリングレートを16kHzに変更
         '-y', // 上書き許可
-        outputPath, // 出力ファイル
+        output16kPath, // 出力ファイル
       ]);
 
       const pcmStream = new prism.opus.Decoder({
@@ -125,57 +125,21 @@ export class GameManager {
         }
       });
 
-      ffmpeg.on('close', (code) => {
+      ffmpeg.on('close', async (code) => {
         if (code === 0) {
-          console.log(`Audio saved to ${outputPath}`);
-
-          // 16kHzに変換するFFmpegプロセスを開始
-          // prettier-ignore
-          const ffmpeg16k = spawn('ffmpeg', [
-            '-i', outputPath, // 入力ファイル
-            '-ar', '16000', // サンプリングレートを16kHzに変更
-            '-y', // 上書き許可
-            output16kPath, // 出力ファイル
-          ]);
-
-          ffmpeg16k.on('close', (code16k) => {
-            if (code16k === 0) {
-              console.log(
-                `Audio converted to 16kHz and saved to ${output16kPath}`
-              );
-              // 必要に応じて16kHzのファイルを処理
-              (async () => {
-                try {
-                  const trascription = await transcribeAudio(
-                    path.join(
-                      __dirname, // Use __dirname to resolve the directory of the current file
-                      '../..',
-                      output16kPath
-                    )
-                  );
-                } catch (transcriptionError) {
-                  console.error(
-                    'Error transcribing audio:',
-                    transcriptionError
-                  );
-                }
-              })();
-            } else {
-              console.error(
-                `FFmpeg 16kHz conversion exited with code ${code16k}`
-              );
-            }
-
-            // 元の48kHzファイルを削除（必要に応じて）
-            fs.unlink(outputPath, (err) => {
-              if (err) console.error(`Failed to delete ${outputPath}:`, err);
-              else console.log(`Deleted original file: ${outputPath}`);
+          console.log(`Audio converted to 16kHz and saved to ${output16kPath}`);
+          try {
+            // 音声ファイルを処理（例: テキスト変換）
+            await this.processTranscription(output16kPath);
+          } catch (transcriptionError) {
+            console.error('Error transcribing audio:', transcriptionError);
+          } finally {
+            // ファイルを削除
+            fs.unlink(output16kPath, (err) => {
+              if (err) console.error(`Failed to delete ${output16kPath}:`, err);
+              else console.log(`Deleted file: ${output16kPath}`);
             });
-          });
-
-          ffmpeg16k.on('error', (error) => {
-            console.error('FFmpeg 16kHz conversion error:', error);
-          });
+          }
         } else {
           console.error(`FFmpeg process exited with code ${code}`);
         }
@@ -187,12 +151,23 @@ export class GameManager {
 
       audioStream.on('close', () => {
         console.log(`Audio stream for user ${userId} has closed.`);
-        // FFmpegプロセスが終了していない場合、stdinを閉じる
         if (!ffmpeg.killed) {
           ffmpeg.stdin.end();
         }
       });
     });
+  }
+
+  private async processTranscription(filePath: string): Promise<void> {
+    try {
+      const transcription = await transcribeAudio(
+        path.join(__dirname, '../..', filePath)
+      );
+      console.log('Transcription result:', transcription);
+      // 必要に応じて追加処理を実装
+    } catch (error) {
+      throw error;
+    }
   }
 
   async endGame(interaction: CommandInteraction) {
