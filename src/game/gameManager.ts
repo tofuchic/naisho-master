@@ -14,6 +14,7 @@ import OpenAI from 'openai';
 import { transcribeAudio } from '../utils/transcription';
 import path from 'path';
 import { spawn } from 'child_process';
+import fs from 'fs';
 
 export class GameManager {
   private isGameActive: boolean = false;
@@ -95,6 +96,7 @@ export class GameManager {
       });
 
       const outputPath = `./recordings/${userId}-${Date.now()}.wav`;
+      const output16kPath = `./recordings/${userId}-${Date.now()}-16k.wav`;
 
       // FFmpegプロセスを開始
       // prettier-ignore
@@ -119,20 +121,54 @@ export class GameManager {
       ffmpeg.on('close', (code) => {
         if (code === 0) {
           console.log(`Audio saved to ${outputPath}`);
-          // ここで保存されたWAVファイルを処理できます
-          (async () => {
-            try {
-              const trascription = await transcribeAudio(
-                path.join(
-                  __dirname, // Use __dirname to resolve the directory of the current file
-                  '../..',
-                  outputPath
-                )
+
+          // 16kHzに変換するFFmpegプロセスを開始
+          // prettier-ignore
+          const ffmpeg16k = spawn('ffmpeg', [
+            '-i', outputPath, // 入力ファイル
+            '-ar', '16000', // サンプリングレートを16kHzに変更
+            '-y', // 上書き許可
+            output16kPath, // 出力ファイル
+          ]);
+
+          ffmpeg16k.on('close', (code16k) => {
+            if (code16k === 0) {
+              console.log(
+                `Audio converted to 16kHz and saved to ${output16kPath}`
               );
-            } catch (transcriptionError) {
-              console.error('Error transcribing audio:', transcriptionError);
+              // 必要に応じて16kHzのファイルを処理
+              (async () => {
+                try {
+                  const trascription = await transcribeAudio(
+                    path.join(
+                      __dirname, // Use __dirname to resolve the directory of the current file
+                      '../..',
+                      output16kPath
+                    )
+                  );
+                } catch (transcriptionError) {
+                  console.error(
+                    'Error transcribing audio:',
+                    transcriptionError
+                  );
+                }
+              })();
+            } else {
+              console.error(
+                `FFmpeg 16kHz conversion exited with code ${code16k}`
+              );
             }
-          })();
+
+            // 元の48kHzファイルを削除（必要に応じて）
+            fs.unlink(outputPath, (err) => {
+              if (err) console.error(`Failed to delete ${outputPath}:`, err);
+              else console.log(`Deleted original file: ${outputPath}`);
+            });
+          });
+
+          ffmpeg16k.on('error', (error) => {
+            console.error('FFmpeg 16kHz conversion error:', error);
+          });
         } else {
           console.error(`FFmpeg process exited with code ${code}`);
         }
