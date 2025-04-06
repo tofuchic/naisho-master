@@ -16,7 +16,7 @@ export async function transcribeAudio(
       logger: console, // ログ出力
       whisperOptions: {
         language: 'ja', // 日本語を指定
-        // outputInText: true, // テキスト出力
+        outputInText: true, // テキスト出力
       },
     });
 
