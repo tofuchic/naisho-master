@@ -1,5 +1,7 @@
 node_modules/
 .env
 dist/
-recordings/*.pcm
-recordings/*.txt
+
+recordings/*
+!recordings/test*
+recordings/test*.txt
