@@ -2,7 +2,7 @@ import { nodewhisper } from 'nodejs-whisper';
 
 export async function transcribeAudio(
   filePath: string,
-  removeWavFileAfterTranscription: boolean
+  removeWavFileAfterTranscription: boolean = false
 ): Promise<string> {
   try {
     console.log('Starting transcription...');
@@ -13,7 +13,7 @@ export async function transcribeAudio(
       autoDownloadModelName: 'base', // モデルが存在しない場合に自動ダウンロード
       removeWavFileAfterTranscription: removeWavFileAfterTranscription, // 変換後にwavファイルを削除しない
       withCuda: false, // CUDAを使用しない
-      logger: undefined, // ログ出力しない
+      logger: console, // ログ出力
       whisperOptions: {
         language: 'ja', // 日本語を指定
         // outputInText: true, // テキスト出力
