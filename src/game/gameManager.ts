@@ -9,13 +9,11 @@ import {
   VoiceConnectionStatus,
   EndBehaviorType,
 } from '@discordjs/voice';
-import * as fs from 'fs';
-import { pipeline } from 'stream';
 import prism from 'prism-media';
 import OpenAI from 'openai';
 import { transcribeAudio } from '../utils/transcription';
 import path from 'path';
-import { OpusEncoder } from '@discordjs/opus';
+import { spawn } from 'child_process';
 
 export class GameManager {
   private isGameActive: boolean = false;
@@ -97,29 +95,51 @@ export class GameManager {
       });
 
       const outputPath = `./recordings/${userId}-${Date.now()}.wav`;
+
+      // FFmpegプロセスを開始
+      // prettier-ignore
+      const ffmpeg = spawn('ffmpeg', [
+        '-f', 's16le', // PCMフォーマット
+        '-ar', '48000', // サンプリングレート
+        '-ac', '2', // チャンネル数
+        '-i', 'pipe:0', // 標準入力から読み取る
+        '-y', // 上書き許可
+        outputPath, // 出力ファイル
+      ]);
+
       const pcmStream = new prism.opus.Decoder({
         rate: 48000,
         channels: 2,
         frameSize: 960,
       });
 
-      const writeStream = fs.createWriteStream(outputPath);
+      // PCMデータをFFmpegにパイプ
+      audioStream.pipe(pcmStream).pipe(ffmpeg.stdin);
 
-      audioStream.pipe(pcmStream).pipe(writeStream);
-
-      writeStream.on('finish', async () => {
-        console.log(`Audio saved to ${outputPath}`);
-        try {
-          const trascription = await transcribeAudio(
-            path.join(
-              __dirname, // Use __dirname to resolve the directory of the current file
-              '../..',
-              outputPath
-            )
-          );
-        } catch (transcriptionError) {
-          console.error('Error transcribing audio:', transcriptionError);
+      ffmpeg.on('close', (code) => {
+        if (code === 0) {
+          console.log(`Audio saved to ${outputPath}`);
+          // ここで保存されたWAVファイルを処理できます
+          (async () => {
+            try {
+              const trascription = await transcribeAudio(
+                path.join(
+                  __dirname, // Use __dirname to resolve the directory of the current file
+                  '../..',
+                  outputPath
+                )
+              );
+            } catch (transcriptionError) {
+              console.error('Error transcribing audio:', transcriptionError);
+            }
+          })();
+        } else {
+          console.error(`FFmpeg process exited with code ${code}`);
         }
+      });
+
+      ffmpeg.on('error', (error) => {
+        console.error('FFmpeg error:', error);
       });
 
       audioStream.on('close', () => {
