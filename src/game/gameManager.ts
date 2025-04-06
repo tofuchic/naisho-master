@@ -118,6 +118,11 @@ export class GameManager {
       // PCMデータをFFmpegにパイプ
       audioStream.pipe(pcmStream).pipe(ffmpeg.stdin);
 
+      // FFmpegの標準エラー出力をログに出力
+      ffmpeg.stderr.on('data', (data) => {
+        console.error(`FFmpeg stderr: ${data.toString()}`);
+      });
+
       // FFmpegプロセスの終了時にstdinを閉じる
       ffmpeg.stdin.on('error', (err) => {
         if ((err as any).code !== 'EPIPE') {
