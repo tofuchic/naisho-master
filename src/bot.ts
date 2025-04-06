@@ -6,7 +6,9 @@ export class Bot {
   private gameManager: GameManager;
 
   constructor() {
-    this.client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+    this.client = new Client({
+      intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+    });
     this.gameManager = new GameManager();
 
     this.client.on('ready', () => {

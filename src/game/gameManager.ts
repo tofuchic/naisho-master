@@ -37,7 +37,9 @@ export class GameManager {
     const voiceChannel = member.voice.channel as VoiceChannel;
 
     if (!voiceChannel) {
-      await interaction.reply('You need to be in a voice channel to start the game!');
+      await interaction.reply(
+        'You need to be in a voice channel to start the game!'
+      );
       return;
     }
 
@@ -50,7 +52,11 @@ export class GameManager {
 
     // Wait for the connection to be ready
     try {
-      await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 10_000);
+      await entersState(
+        this.voiceConnection,
+        VoiceConnectionStatus.Ready,
+        10_000
+      );
       await interaction.reply('The game has started! NG words have been set.');
     } catch (error) {
       console.error('Failed to join voice channel:', error);
@@ -88,13 +94,19 @@ export class GameManager {
       });
 
       const outputPath = `./recordings/${userId}-${Date.now()}.pcm`;
-      const pcmStream = new prism.opus.Decoder({ rate: 48000, channels: 2, frameSize: 960 });
+      const pcmStream = new prism.opus.Decoder({
+        rate: 48000,
+        channels: 2,
+        frameSize: 960,
+      });
       const writeStream = createWriteStream(outputPath);
 
       pipeline(audioStream, pcmStream, writeStream, (err) => {
         if (err) {
           if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') {
-            console.error('Stream was prematurely closed. This may happen if the user stops speaking abruptly.');
+            console.error(
+              'Stream was prematurely closed. This may happen if the user stops speaking abruptly.'
+            );
           } else {
             console.error('Error processing audio stream:', err);
           }
@@ -126,7 +138,10 @@ export class GameManager {
         return; // 成功した場合は終了
       } catch (error) {
         attempt++;
-        console.error(`Error during transcription (attempt ${attempt}):`, error);
+        console.error(
+          `Error during transcription (attempt ${attempt}):`,
+          error
+        );
 
         if (attempt >= maxRetries) {
           console.error('Max retries reached. Transcription failed.');

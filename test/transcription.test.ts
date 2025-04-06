@@ -2,7 +2,10 @@ import path from 'path';
 import { transcribeAudio } from '../src/utils/transcription';
 
 // テスト用の音声ファイルパス
-const testFilePath = path.resolve(__dirname, '../recordings/test_audio_16k.wav'); // 16kHzに変換したファイルを指定
+const testFilePath = path.resolve(
+  __dirname,
+  '../recordings/test_audio_16k.wav'
+); // 16kHzに変換したファイルを指定
 
 describe('transcribeAudio', () => {
   it('should return a non-empty transcription result', async () => {
