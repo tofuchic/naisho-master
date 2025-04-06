@@ -1,26 +1,23 @@
 import path from 'path';
 import { transcribeAudio } from '../src/utils/transcription';
 
-describe('transcribe 16kHz WAV', () => {
-  it.only('should return a non-empty transcription result', async () => {
-    // テスト用の音声ファイルパス
+describe('transcribeAudio Tests', () => {
+  // タイムアウトを延長 (デフォルトは5000ms)
+  jest.setTimeout(30000);
+
+  it.only('should return a non-empty transcription result for 16kHz WAV', async () => {
     const testFilePath = path.resolve(
       __dirname,
       '../recordings/test_audio_16k.wav'
-    ); // 16kHzに変換したファイルを指定
+    );
 
-    const result = await transcribeAudio(testFilePath);
+    const result = await transcribeAudio(testFilePath, false);
 
-    // 結果が空文字でないことを確認
     expect(result.length).toBeGreaterThan(0);
-
-    // 結果に特定のキーワードが含まれることを確認
     expect(result).toContain('発言');
   });
-});
 
-describe('transcribe 48kHz WAV', () => {
-  it.only('should return an error', async () => {
+  it.only('should return an error when transcribe 48kHz WAV', async () => {
     // テスト用の音声ファイルパス
     const testFilePath = path.resolve(
       __dirname,
@@ -28,7 +25,7 @@ describe('transcribe 48kHz WAV', () => {
     );
 
     try {
-      await transcribeAudio(testFilePath);
+      await transcribeAudio(testFilePath, false);
       // エラーが発生しなかった場合は失敗
       fail('Expected an error to be thrown, but none was thrown.');
     } catch (error) {
@@ -37,24 +34,17 @@ describe('transcribe 48kHz WAV', () => {
       console.error('Expected error:', error);
     }
   });
-});
 
-describe('transcribe 16kHz PCM', () => {
-  it.only('should return an error', async () => {
+  it.only('should return a non-empty transcription result for 16kHz PCM', async () => {
     // テスト用の音声ファイルパス
     const testFilePath = path.resolve(
       __dirname,
       '../recordings/test_audio_16bit_16k.pcm'
     );
 
-    try {
-      await transcribeAudio(testFilePath);
-      // エラーが発生しなかった場合は失敗
-      fail('Expected an error to be thrown, but none was thrown.');
-    } catch (error) {
-      // エラーが発生したことを確認
-      expect(error).toBeDefined();
-      console.error('Expected error:', error);
-    }
+    const result = await transcribeAudio(testFilePath, true);
+
+    expect(result.length).toBeGreaterThan(0);
+    expect(result).toContain('発言');
   });
 });
