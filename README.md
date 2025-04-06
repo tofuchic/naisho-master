@@ -32,16 +32,19 @@
 3. `.env` ファイルにトークンを設定します。
 1. Botをビルドします:
    ```bash
-   npx tsc
+   npx run build
    ```
 1. 実行できるかテストします。
    ```bash
    sudo apt update
    sudo apt install cmake
    ```
+   ```bash
+   npm test
+   ```
 4. Botを起動します:
    ```bash
-   node dist/index.js
+   npm start
    ```
 
 ## 使用方法
