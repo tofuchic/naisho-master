@@ -34,6 +34,11 @@
    ```bash
    npx tsc
    ```
+1. 実行できるかテストします。
+   ```bash
+   sudo apt update
+   sudo apt install cmake
+   ```
 4. Botを起動します:
    ```bash
    node dist/index.js
