@@ -133,12 +133,6 @@ export class GameManager {
             await this.processTranscription(output16kPath);
           } catch (transcriptionError) {
             console.error('Error transcribing audio:', transcriptionError);
-          } finally {
-            // ファイルを削除
-            fs.unlink(output16kPath, (err) => {
-              if (err) console.error(`Failed to delete ${output16kPath}:`, err);
-              else console.log(`Deleted file: ${output16kPath}`);
-            });
           }
         } else {
           console.error(`FFmpeg process exited with code ${code}`);
@@ -161,7 +155,9 @@ export class GameManager {
   private async processTranscription(filePath: string): Promise<void> {
     try {
       const transcription = await transcribeAudio(
-        path.join(__dirname, '../..', filePath)
+        path.join(__dirname, '../..', filePath),
+        false,
+        true
       );
       console.log('Transcription result:', transcription);
       // 必要に応じて追加処理を実装
