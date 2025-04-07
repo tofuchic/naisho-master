@@ -114,7 +114,7 @@ export class GameManager {
         return;
       }
 
-      const uniqueFileName = `${userId}-${uuidv4()}-16k.wav`;
+      const uniqueFileName = `${userId}-${Date.now()}-${uuidv4()}-16k.wav`;
       const outputPath = path.join(this.recordingsDir, uniqueFileName);
 
       const audioStream = receiver.subscribe(userId, {
