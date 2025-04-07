@@ -174,6 +174,7 @@ export class GameManager {
       // Handle FFmpeg errors
       ffmpeg.on('error', (error) => {
         console.error('FFmpeg error:', error);
+        console.error('FFmpeg command:', ffmpeg.spawnargs.join(' '));
       });
 
       // Handle audio stream close
