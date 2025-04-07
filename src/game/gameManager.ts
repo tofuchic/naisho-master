@@ -193,12 +193,33 @@ export class GameManager {
 
   private async processTranscription(filePath: string): Promise<void> {
     try {
+      const stats = fs.statSync(filePath);
+      if (stats.size < 16000) {
+        // 1秒未満の音声ファイルを判定
+        console.log('Audio file is too short, padding with silence...');
+        const paddedFilePath = filePath.replace('.wav', '-padded.wav');
+        await new Promise((resolve, reject) => {
+          const ffmpeg = spawn('ffmpeg', [
+            '-i',
+            filePath,
+            '-af',
+            'apad=pad_dur=1', // 1秒の無音を追加
+            '-y',
+            paddedFilePath,
+          ]);
+          ffmpeg.on('close', (code) => {
+            if (code === 0) resolve(paddedFilePath);
+            else reject(new Error(`FFmpeg exited with code ${code}`));
+          });
+        });
+        filePath = paddedFilePath;
+      }
       const transcription = await transcribeAudio(
         path.join(__dirname, '../..', filePath)
       );
       console.log('Transcription result:', transcription);
-      // 必要に応じて追加処理を実装
     } catch (error) {
+      console.error('Error during transcription:', error);
       throw error;
     }
   }
