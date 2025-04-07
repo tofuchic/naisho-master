@@ -158,8 +158,9 @@ export class GameManager {
             await this.processTranscription(outputPath);
           } catch (transcriptionError) {
             console.error('Error transcribing audio:', transcriptionError);
-          } finally {
-            // Clean up the file
+          }
+          // Clean up the file after transcription is complete
+          if (fs.existsSync(outputPath)) {
             fs.unlink(outputPath, (err) => {
               if (err) console.error(`Failed to delete ${outputPath}:`, err);
               else console.log(`Deleted file: ${outputPath}`);
