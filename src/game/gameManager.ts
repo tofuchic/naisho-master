@@ -154,6 +154,10 @@ export class GameManager {
       ffmpeg.on('close', async (code) => {
         if (code === 0) {
           console.log(`Audio converted to 16kHz and saved to ${outputPath}`);
+          if (!fs.existsSync(outputPath)) {
+            console.error(`File not found after FFmpeg process: ${outputPath}`);
+            return;
+          }
           try {
             await this.processTranscription(outputPath);
           } catch (transcriptionError) {
@@ -165,6 +169,8 @@ export class GameManager {
               if (err) console.error(`Failed to delete ${outputPath}:`, err);
               else console.log(`Deleted file: ${outputPath}`);
             });
+          } else {
+            console.warn(`File already missing: ${outputPath}`);
           }
         } else {
           console.error(`FFmpeg process exited with code ${code}`);
@@ -175,6 +181,9 @@ export class GameManager {
       ffmpeg.on('error', (error) => {
         console.error('FFmpeg error:', error);
         console.error('FFmpeg command:', ffmpeg.spawnargs.join(' '));
+        if (!ffmpeg.killed) {
+          ffmpeg.kill('SIGKILL'); // プロセスを強制終了
+        }
       });
 
       // Handle audio stream close
@@ -196,24 +205,28 @@ export class GameManager {
     try {
       const stats = fs.statSync(filePath);
       if (stats.size < 16000) {
-        // 1秒未満の音声ファイルを判定
         console.log('Audio file is too short, padding with silence...');
         const paddedFilePath = filePath.replace('.wav', '-padded.wav');
-        await new Promise((resolve, reject) => {
-          const ffmpeg = spawn('ffmpeg', [
-            '-i',
-            filePath,
-            '-af',
-            'apad=pad_dur=1', // 1秒の無音を追加
-            '-y',
-            paddedFilePath,
-          ]);
-          ffmpeg.on('close', (code) => {
-            if (code === 0) resolve(paddedFilePath);
-            else reject(new Error(`FFmpeg exited with code ${code}`));
+        try {
+          await new Promise((resolve, reject) => {
+            const ffmpeg = spawn('ffmpeg', [
+              '-i',
+              filePath,
+              '-af',
+              'apad=pad_dur=1', // 1秒の無音を追加
+              '-y',
+              paddedFilePath,
+            ]);
+            ffmpeg.on('close', (code) => {
+              if (code === 0) resolve(paddedFilePath);
+              else reject(new Error(`FFmpeg exited with code ${code}`));
+            });
           });
-        });
-        filePath = paddedFilePath;
+          filePath = paddedFilePath;
+        } catch (error) {
+          console.error('Error padding audio file:', error);
+          throw error;
+        }
       }
       const transcription = await transcribeAudio(
         path.join(__dirname, '../..', filePath)
