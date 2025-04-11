@@ -3,7 +3,7 @@ name: Auto Code Review - Review
 on:
   pull_request:
     branches:
-      - main
+      - none # cmake などが必要なので一旦スキップ
   issue_comment:
 
 jobs:
