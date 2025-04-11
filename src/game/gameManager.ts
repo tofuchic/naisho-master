@@ -209,39 +209,51 @@ export class GameManager {
   }
 
   private async processTranscription(filePath: string): Promise<void> {
-    try {
-      const stats = fs.statSync(filePath);
-      if (stats.size < 16000) {
-        console.log('Audio file is too short, padding with silence...');
-        const paddedFilePath = filePath.replace('.wav', '-padded.wav');
-        try {
-          await new Promise((resolve, reject) => {
-            const ffmpeg = spawn('ffmpeg', [
-              '-i',
-              filePath,
-              '-af',
-              'apad=pad_dur=1', // 1秒の無音を追加
-              '-y',
-              paddedFilePath,
-            ]);
-            ffmpeg.on('close', (code) => {
-              if (code === 0) resolve(paddedFilePath);
-              else reject(new Error(`FFmpeg exited with code ${code}`));
-            });
+    const absolutePath = path.resolve(filePath);
+    if (!fs.existsSync(absolutePath)) {
+      console.warn(`File not found: ${absolutePath}. Skipping transcription.`);
+      return;
+    }
+    let finalPath = absolutePath;
+    const stats = fs.statSync(finalPath);
+    if (stats.size < 16000) {
+      console.log('Audio file is too short, padding with silence...');
+      const paddedFilePath = finalPath.replace('.wav', '-padded.wav');
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const ffmpeg = spawn('ffmpeg', [
+            '-i',
+            finalPath,
+            '-af',
+            'apad=pad_dur=1',
+            '-y',
+            paddedFilePath,
+          ]);
+          ffmpeg.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`FFmpeg exited with code ${code}`));
           });
-          filePath = paddedFilePath;
-        } catch (error) {
-          console.error('Error padding audio file:', error);
-          throw error;
-        }
+        });
+        finalPath = paddedFilePath;
+      } catch (error) {
+        console.error('Error padding audio file:', error);
+        return;
       }
-      const transcription = await transcribeAudio(
-        path.join(__dirname, '../..', filePath)
-      );
+    }
+    try {
+      const transcription = await transcribeAudio(finalPath);
       console.log('Transcription result:', transcription);
     } catch (error) {
       console.error('Error during transcription:', error);
-      throw error;
+    } finally {
+      if (fs.existsSync(finalPath)) {
+        fs.unlink(finalPath, (err) => {
+          if (err) console.error(`Failed to delete ${finalPath}:`, err);
+          else console.log(`Deleted file: ${finalPath}`);
+        });
+      } else {
+        console.warn(`File already missing: ${finalPath}`);
+      }
     }
   }
 
