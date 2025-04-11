@@ -1,0 +1,22 @@
+name: Auto Code Review
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      - name: Install Dependencies
+        run: npm install
+      - name: Run Tests
+        run: npm test
+      - name: Type Check
+        run: npx tsc --noEmit
