@@ -210,8 +210,15 @@ export class GameManager {
 
   private async processTranscription(filePath: string): Promise<void> {
     const absolutePath = path.resolve(filePath);
-    if (!fs.existsSync(absolutePath)) {
-      console.warn(`File not found: ${absolutePath}. Skipping transcription.`);
+    console.log(`Processing transcription for file: ${absolutePath}`);
+    // Wait briefly to ensure the file system has finalized the file write
+    await this.sleep(100);
+    // Retry waiting for the file to be fully available
+    const fileReady = await this.waitForFile(absolutePath, 3, 200);
+    if (!fileReady) {
+      console.warn(
+        `File not available after waiting: ${absolutePath}. Skipping transcription.`
+      );
       return;
     }
     let finalPath = absolutePath;
@@ -230,8 +237,12 @@ export class GameManager {
             paddedFilePath,
           ]);
           ffmpeg.on('close', (code) => {
-            if (code === 0) resolve();
-            else reject(new Error(`FFmpeg exited with code ${code}`));
+            if (code === 0) {
+              console.log(`Padded file created: ${paddedFilePath}`);
+              resolve();
+            } else {
+              reject(new Error(`FFmpeg exited with code ${code}`));
+            }
           });
         });
         finalPath = paddedFilePath;
@@ -240,21 +251,44 @@ export class GameManager {
         return;
       }
     }
+    console.log(`Starting transcription on file: ${finalPath}`);
     try {
       const transcription = await transcribeAudio(finalPath);
       console.log('Transcription result:', transcription);
     } catch (error) {
       console.error('Error during transcription:', error);
     } finally {
-      if (fs.existsSync(finalPath)) {
-        fs.unlink(finalPath, (err) => {
-          if (err) console.error(`Failed to delete ${finalPath}:`, err);
-          else console.log(`Deleted file: ${finalPath}`);
-        });
-      } else {
-        console.warn(`File already missing: ${finalPath}`);
+      try {
+        await fs.promises.unlink(finalPath);
+        console.log(`Deleted file: ${finalPath}`);
+      } catch (err) {
+        console.warn(`Failed to delete ${finalPath}:`, err);
       }
     }
+  }
+
+  private async waitForFile(
+    filePath: string,
+    retries: number,
+    delay: number
+  ): Promise<boolean> {
+    for (let i = 0; i < retries; i++) {
+      if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath);
+        if (stats.size > 0) {
+          return true;
+        }
+      }
+      console.log(
+        `Waiting for file availability: ${filePath} (${i + 1}/${retries})`
+      );
+      await this.sleep(delay);
+    }
+    return fs.existsSync(filePath) && fs.statSync(filePath).size > 0;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async endGame(interaction: CommandInteraction) {
