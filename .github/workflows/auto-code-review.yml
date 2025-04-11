@@ -1,8 +1,7 @@
-name: Auto Code Review
+name: Auto Code Review - Review
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
     branches:
       - main
   issue_comment:
@@ -22,21 +21,3 @@ jobs:
         run: npm test
       - name: Type Check
         run: npx tsc --noEmit
-  pr_agent_job:
-    if: ${{ github.event.sender.type != 'Bot' }}
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: write
-      contents: write
-    name: Run pr agent on every pull request, respond to user comments
-    steps:
-      - name: Launch Mistral 7B Model
-        run: |
-          docker run -d -p 8000:8000 huggingface/mistral-7b
-      - name: PR Agent action step
-        id: pragent
-        uses: qodo-ai/pr-agent@main
-        env:
-          MISTRAL_API_URL: http://localhost:8000
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
