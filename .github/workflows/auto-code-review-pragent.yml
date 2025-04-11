@@ -22,5 +22,5 @@ jobs:
         uses: qodo-ai/pr-agent@main
         env:
           OPENAI.API_BASE: https://models.inference.ai.azure.com
-          OPENAI_KEY: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
