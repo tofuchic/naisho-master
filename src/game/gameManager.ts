@@ -17,8 +17,10 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid'; // UUID生成用ライブラリを追加
+import PQueue from 'p-queue';
 
 const mkdir = promisify(fs.mkdir);
+const ffmpegQueue = new PQueue({ concurrency: 2 }); // 最大2つのプロセスを同時実行
 
 export class GameManager {
   private isGameActive: boolean = false;
@@ -114,89 +116,94 @@ export class GameManager {
         return;
       }
 
-      const uniqueFileName = `${userId}-${Date.now()}-${uuidv4()}-16k.wav`;
-      const outputPath = path.join(this.recordingsDir, uniqueFileName);
+      await ffmpegQueue.add(async () => {
+        // FFmpegプロセスの実行
+        const uniqueFileName = `${userId}-${Date.now()}-${uuidv4()}-16k.wav`;
+        const outputPath = path.join(this.recordingsDir, uniqueFileName);
 
-      const audioStream = receiver.subscribe(userId, {
-        end: {
-          behavior: EndBehaviorType.AfterSilence,
-          duration: 1000, // 1秒間の無音で終了
-        },
-      });
+        const audioStream = receiver.subscribe(userId, {
+          end: {
+            behavior: EndBehaviorType.AfterSilence,
+            duration: 1000, // 1秒間の無音で終了
+          },
+        });
 
-      // FFmpegプロセスを開始（直接16kHzに変換）
-      // prettier-ignore
-      const ffmpeg = spawn('ffmpeg', [
-        '-f', 's16le', // PCMフォーマット
-        '-ar', '48000', // 入力サンプリングレート
-        '-ac', '2', // チャンネル数
-        '-i', 'pipe:0', // 標準入力から読み取る
-        '-ar', '16000', // 出力サンプリングレートを16kHzに変更
-        '-y', // 上書き許可
-        outputPath, // 出力ファイル
-      ]);
+        // FFmpegプロセスを開始（直接16kHzに変換）
+        // prettier-ignore
+        const ffmpeg = spawn('ffmpeg', [
+          '-f', 's16le', // PCMフォーマット
+          '-ar', '48000', // 入力サンプリングレート
+          '-ac', '2', // チャンネル数
+          '-i', 'pipe:0', // 標準入力から読み取る
+          '-ar', '16000', // 出力サンプリングレートを16kHzに変更
+          '-y', // 上書き許可
+          outputPath, // 出力ファイル
+        ]);
 
-      const pcmStream = new prism.opus.Decoder({
-        rate: 48000,
-        channels: 2,
-        frameSize: 960,
-      });
+        const pcmStream = new prism.opus.Decoder({
+          rate: 48000,
+          channels: 2,
+          frameSize: 960,
+        });
 
-      // Pipe PCM data to FFmpeg
-      audioStream.pipe(pcmStream).pipe(ffmpeg.stdin);
+        // Pipe PCM data to FFmpeg
+        audioStream.pipe(pcmStream).pipe(ffmpeg.stdin);
 
-      // Log FFmpeg stderr
-      ffmpeg.stderr.on('data', (data) => {
-        console.error(`FFmpeg stderr: ${data.toString()}`);
-      });
+        // Log FFmpeg stderr
+        ffmpeg.stderr.on('data', (data) => {
+          console.error(`FFmpeg stderr: ${data.toString()}`);
+        });
 
-      // Handle FFmpeg process close
-      ffmpeg.on('close', async (code) => {
-        if (code === 0) {
-          console.log(`Audio converted to 16kHz and saved to ${outputPath}`);
-          if (!fs.existsSync(outputPath)) {
-            console.error(`File not found after FFmpeg process: ${outputPath}`);
-            return;
-          }
-          try {
-            await this.processTranscription(outputPath);
-          } catch (transcriptionError) {
-            console.error('Error transcribing audio:', transcriptionError);
-          }
-          // Clean up the file after transcription is complete
-          if (fs.existsSync(outputPath)) {
-            fs.unlink(outputPath, (err) => {
-              if (err) console.error(`Failed to delete ${outputPath}:`, err);
-              else console.log(`Deleted file: ${outputPath}`);
-            });
+        // Handle FFmpeg process close
+        ffmpeg.on('close', async (code) => {
+          if (code === 0) {
+            console.log(`Audio converted to 16kHz and saved to ${outputPath}`);
+            if (!fs.existsSync(outputPath)) {
+              console.error(
+                `File not found after FFmpeg process: ${outputPath}`
+              );
+              return;
+            }
+            try {
+              await this.processTranscription(outputPath);
+            } catch (transcriptionError) {
+              console.error('Error transcribing audio:', transcriptionError);
+            }
+            // Clean up the file after transcription is complete
+            if (fs.existsSync(outputPath)) {
+              fs.unlink(outputPath, (err) => {
+                if (err) console.error(`Failed to delete ${outputPath}:`, err);
+                else console.log(`Deleted file: ${outputPath}`);
+              });
+            } else {
+              console.warn(`File already missing: ${outputPath}`);
+            }
           } else {
-            console.warn(`File already missing: ${outputPath}`);
+            console.error(`FFmpeg process exited with code ${code}`);
           }
-        } else {
-          console.error(`FFmpeg process exited with code ${code}`);
-        }
-      });
+        });
 
-      // Handle FFmpeg errors
-      ffmpeg.on('error', (error) => {
-        console.error('FFmpeg error:', error);
-        console.error('FFmpeg command:', ffmpeg.spawnargs.join(' '));
-        if (!ffmpeg.killed) {
-          ffmpeg.kill('SIGKILL'); // プロセスを強制終了
-        }
-      });
+        // Handle FFmpeg errors
+        ffmpeg.on('error', (error) => {
+          console.error('FFmpeg error:', error);
+          console.error('FFmpeg command:', ffmpeg.spawnargs.join(' '));
+          if (!ffmpeg.killed) {
+            ffmpeg.kill('SIGKILL'); // プロセスを強制終了
+          }
+        });
 
-      // Handle audio stream close
-      audioStream.on('close', () => {
-        console.log(`Audio stream for user ${userId} has closed.`);
-        if (!ffmpeg.killed) {
-          ffmpeg.stdin.end();
-        }
-      });
+        // Handle audio stream close
+        audioStream.on('close', () => {
+          console.log(`Audio stream for user ${userId} has closed.`);
+          if (!ffmpeg.killed) {
+            ffmpeg.stdin.end();
+          }
+        });
 
-      // Handle audio stream errors
-      audioStream.on('error', (error) => {
-        console.error(`Audio stream error for user ${userId}:`, error);
+        // Handle audio stream errors
+        audioStream.on('error', (error) => {
+          console.error(`Audio stream error for user ${userId}:`, error);
+        });
       });
     });
   }
