@@ -31,9 +31,12 @@ jobs:
       contents: write
     name: Run pr agent on every pull request, respond to user comments
     steps:
+      - name: Launch Mistral 7B Model
+        run: |
+          docker run -d -p 8000:8000 huggingface/mistral-7b
       - name: PR Agent action step
         id: pragent
         uses: qodo-ai/pr-agent@main
         env:
-          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+          MISTRAL_API_URL: http://localhost:8000
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
