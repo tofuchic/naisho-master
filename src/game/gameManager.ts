@@ -31,6 +31,11 @@ export class GameManager {
   private isRecordingsDirInitialized: boolean = false;
 
   constructor() {
+    // Set environment variables so that nodewhisper uses the project's recordings directory.
+    const recordingsAbsoluteDir = path.resolve(process.cwd(), 'recordings');
+    process.env.WHISPER_RECORDINGS_DIR = recordingsAbsoluteDir;
+    process.env.WHISPER_CPP_RECORDINGS_DIR = recordingsAbsoluteDir;
+
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY, // OpenAIのAPIキーを.envに設定
     });
@@ -207,6 +212,11 @@ export class GameManager {
           console.error(`Audio stream error for user ${userId}:`, error);
         });
       });
+    });
+
+    // Listen for when a user stops speaking, then allow new recordings for the same user
+    receiver.speaking.on('end', (userId) => {
+      console.log(`User ${userId} finished speaking.`);
     });
   }
 
