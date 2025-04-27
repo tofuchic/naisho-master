@@ -20,7 +20,7 @@ import { v4 as uuidv4 } from 'uuid'; // UUID生成用ライブラリを追加
 import PQueue from 'p-queue';
 
 const mkdir = promisify(fs.mkdir);
-const ffmpegQueue = new PQueue({ concurrency: 2 }); // 最大2つのプロセスを同時実行
+const ffmpegQueue = new PQueue({ concurrency: 1 }); // 最大2つのプロセスを同時実行
 
 export class GameManager {
   private isGameActive: boolean = false;
@@ -169,15 +169,6 @@ export class GameManager {
             } catch (transcriptionError) {
               console.error('Error transcribing audio:', transcriptionError);
             }
-            // Clean up the file after transcription is complete
-            if (fs.existsSync(outputPath)) {
-              fs.unlink(outputPath, (err) => {
-                if (err) console.error(`Failed to delete ${outputPath}:`, err);
-                else console.log(`Deleted file: ${outputPath}`);
-              });
-            } else {
-              console.warn(`File already missing: ${outputPath}`);
-            }
           } else {
             console.error(`FFmpeg process exited with code ${code}`);
           }
@@ -253,17 +244,10 @@ export class GameManager {
     }
     console.log(`Starting transcription on file: ${finalPath}`);
     try {
-      const transcription = await transcribeAudio(finalPath);
+      const transcription = await transcribeAudio(finalPath, false, true);
       console.log('Transcription result:', transcription);
     } catch (error) {
       console.error('Error during transcription:', error);
-    } finally {
-      try {
-        await fs.promises.unlink(finalPath);
-        console.log(`Deleted file: ${finalPath}`);
-      } catch (err) {
-        console.warn(`Failed to delete ${finalPath}:`, err);
-      }
     }
   }
 
