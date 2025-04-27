@@ -1,4 +1,6 @@
 import { nodewhisper } from 'nodejs-whisper';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export async function transcribeAudio(
   filePath: string,
@@ -8,8 +10,22 @@ export async function transcribeAudio(
   try {
     console.log('Starting transcription...');
 
+    // Whisper用のrecordingsフォルダへファイルをコピー
+    const whisperDir = path.join(
+      path.dirname(require.resolve('nodejs-whisper')),
+      'cpp',
+      'whisper.cpp',
+      'recordings'
+    );
+    if (!fs.existsSync(whisperDir)) {
+      fs.mkdirSync(whisperDir, { recursive: true });
+    }
+    const targetFilePath = path.join(whisperDir, path.basename(filePath));
+    fs.copyFileSync(filePath, targetFilePath);
+    console.log(`Copied file to ${targetFilePath}`);
+
     // 音声ファイルをテキストに変換
-    const transcription = await nodewhisper(filePath, {
+    const transcription = await nodewhisper(targetFilePath, {
       modelName: 'base', // 使用するモデル
       autoDownloadModelName: 'base', // モデルが存在しない場合に自動ダウンロード
       removeWavFileAfterTranscription: removeWavFileAfterTranscription, // 変換後にwavファイルを削除しない

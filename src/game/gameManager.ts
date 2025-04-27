@@ -65,7 +65,7 @@ export class GameManager {
       await entersState(
         this.voiceConnection,
         VoiceConnectionStatus.Ready,
-        10_000
+        10000
       );
       await interaction.reply('The game has started! NG words have been set.');
     } catch (error) {
@@ -105,6 +105,7 @@ export class GameManager {
 
     const receiver = this.voiceConnection.receiver;
 
+    // Listen for when a user starts speaking
     receiver.speaking.on('start', async (userId) => {
       console.log(`User ${userId} started speaking`);
 
@@ -117,27 +118,36 @@ export class GameManager {
       }
 
       await ffmpegQueue.add(async () => {
-        // FFmpegプロセスの実行
+        // Execute FFmpeg process for each speaking event
         const uniqueFileName = `${userId}-${Date.now()}-${uuidv4()}-16k.wav`;
         const outputPath = path.join(this.recordingsDir, uniqueFileName);
 
         const audioStream = receiver.subscribe(userId, {
           end: {
             behavior: EndBehaviorType.AfterSilence,
-            duration: 1000, // 1秒間の無音で終了
+            duration: 1000, // Ends after 1 second of silence
           },
         });
 
-        // FFmpegプロセスを開始（直接16kHzに変換）
+        // Start FFmpeg process (convert directly to 16kHz)
         // prettier-ignore
         const ffmpeg = spawn('ffmpeg', [
-          '-f', 's16le', // PCMフォーマット
-          '-ar', '48000', // 入力サンプリングレート
-          '-ac', '2', // チャンネル数
-          '-i', 'pipe:0', // 標準入力から読み取る
-          '-ar', '16000', // 出力サンプリングレートを16kHzに変更
-          '-y', // 上書き許可
-          outputPath, // 出力ファイル
+          '-f',
+          's16le', // PCM format
+          '-ar',
+          '48000', // Input sampling rate
+          '-ac',
+          '2', // Number of channels
+          '-i',
+          'pipe:0', // Read from standard input
+          '-ar',
+          '16000', // Convert output sampling rate to 16kHz
+          '-acodec',
+          'pcm_s16le', // Specify output codec
+          '-f',
+          'wav',   // Specify output format as WAV
+          '-y', // Overwrite if file exists
+          path.resolve(outputPath), // Output file (absolute path)
         ]);
 
         const pcmStream = new prism.opus.Decoder({
@@ -179,14 +189,15 @@ export class GameManager {
           console.error('FFmpeg error:', error);
           console.error('FFmpeg command:', ffmpeg.spawnargs.join(' '));
           if (!ffmpeg.killed) {
-            ffmpeg.kill('SIGKILL'); // プロセスを強制終了
+            ffmpeg.kill('SIGKILL');
           }
         });
 
         // Handle audio stream close
-        audioStream.on('close', () => {
+        audioStream.on('close', async () => {
           console.log(`Audio stream for user ${userId} has closed.`);
           if (!ffmpeg.killed) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
             ffmpeg.stdin.end();
           }
         });
@@ -202,9 +213,9 @@ export class GameManager {
   private async processTranscription(filePath: string): Promise<void> {
     const absolutePath = path.resolve(filePath);
     console.log(`Processing transcription for file: ${absolutePath}`);
-    // Wait briefly to ensure the file system has finalized the file write
+    // Wait briefly to ensure file system is finalized
     await this.sleep(100);
-    // Retry waiting for the file to be fully available
+    // Retry waiting for file to be fully available
     const fileReady = await this.waitForFile(absolutePath, 3, 200);
     if (!fileReady) {
       console.warn(
@@ -280,18 +291,15 @@ export class GameManager {
       await interaction.reply('No game is currently active.');
       return;
     }
-
     // Disconnect from the voice channel
     if (this.voiceConnection) {
       this.voiceConnection.destroy();
       this.voiceConnection = null;
     }
-
     if (this.audioPlayer) {
       this.audioPlayer.stop();
       this.audioPlayer = null;
     }
-
     this.isGameActive = false;
     await interaction.reply('The game has ended!');
   }
