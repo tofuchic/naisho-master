@@ -46,7 +46,7 @@ export async function processTranscription(filePath: string): Promise<void> {
   }
   console.log(`Starting transcription on file: ${finalPath}`);
   try {
-    const transcription = await transcribeAudio(finalPath, false, true);
+    const transcription = await transcribeAudio(finalPath, false);
     console.log('Transcription result:', transcription);
   } catch (error) {
     console.error('Error during transcription:', error);
