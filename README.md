@@ -55,10 +55,13 @@
 
 このBotの文字起こし精度向上には、llama.cppをAPIサーバとしてローカルで起動する必要があります。
 
-### 1. llama.cppの取得・ビルド
+### 1. llama.cppサブモジュールの初期化・ビルド
+
+このリポジトリはllama.cppをgit submoduleとして管理しています。clone後、以下のコマンドでサブモジュールを初期化・更新してください。
 
 ```bash
-git clone https://github.com/ggerganov/llama.cpp.git
+# 親リポジトリをcloneした直後に実行
+git submodule update --init --recursive
 cd llama.cpp
 # OpenCL対応でビルド（AMD GPU利用の場合）
 make LLAMA_OPENCL=1
