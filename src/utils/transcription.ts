@@ -11,8 +11,7 @@ import * as pathModule from 'path';
 
 export async function transcribeAudio(
   filePath: string,
-  outputInText: boolean = false,
-  removeWavFileAfterTranscription: boolean = false
+  outputInText: boolean = false
 ): Promise<string> {
   try {
     console.log('Starting transcription...');
@@ -21,7 +20,6 @@ export async function transcribeAudio(
     const transcription = await nodewhisper(filePath, {
       modelName: 'base', // Model to use
       autoDownloadModelName: 'base', // Automatically download model if missing
-      removeWavFileAfterTranscription: removeWavFileAfterTranscription, // Determines whether to delete wav file after transcription
       withCuda: false, // Do not use CUDA
       logger: console, // Logger output
       whisperOptions: {
