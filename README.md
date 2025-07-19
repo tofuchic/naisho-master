@@ -51,6 +51,49 @@
    npm start
    ```
 
+## ローカルLLM（llama.cpp）APIサーバのセットアップ手順
+
+このBotの文字起こし精度向上には、llama.cppをAPIサーバとしてローカルで起動する必要があります。
+
+### 1. llama.cppの取得・ビルド
+
+```bash
+git clone https://github.com/ggerganov/llama.cpp.git
+cd llama.cpp
+# OpenCL対応でビルド（AMD GPU利用の場合）
+make LLAMA_OPENCL=1
+# CPUのみの場合は通常ビルド
+# make
+```
+
+### 2. 日本語学習済みモデル（gguf形式）のダウンロード
+
+例: [Japanese-LLaMA-2-7B-gguf](https://huggingface.co/karakuri/japanese-llama2-7b-gguf)
+
+```bash
+# モデルファイルをllama.cpp/models/に保存
+mkdir -p models
+cd models
+wget <モデルのダウンロードURL>
+```
+
+### 3. APIサーバの起動
+
+```bash
+# llama.cppディレクトリで
+./server -m models/<ダウンロードしたモデル名>.gguf -ngl 32 --port 8080
+```
+
+### 4. 動作確認
+
+curl -X POST http://localhost:8080/completion \
+ -H "Content-Type: application/json" \
+ -d '{"prompt": "こんにちは。元気ですか？", "max_tokens": 100}'
+
+Botの文字起こし修正機能はこのAPIサーバに依存します。
+
+---
+
 ## アーキテクチャ選定（ADR）
 
 NGワード検出機能の実装方針については、ローカルLLM（llama.cpp + 日本語学習済みモデル）を採用しています。選定理由や比較検討内容は `docs/adr-ngword-llm.md` に記載しています。
