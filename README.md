@@ -109,7 +109,7 @@ cd models
 wget <モデルのダウンロードURL>
 ```
 
-例: `wget https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-fast-instruct-gguf`
+例: `wget https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-fast-instruct-gguf/resolve/main/ELYZA-japanese-Llama-2-7b-fast-instruct-q4_0.gguf`
 
 ### 3. APIサーバの起動
 
