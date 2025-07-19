@@ -48,6 +48,12 @@ export async function processTranscription(filePath: string): Promise<void> {
   try {
     const transcription = await transcribeAudio(finalPath, false);
     console.log('Transcription result:', transcription);
+    console.log(
+      'Transcription process completed. Cleaning up the recorded file: ',
+      finalPath
+    );
+    fs.unlinkSync(finalPath);
+    console.log(`Cleaning file ${finalPath} completed.`);
   } catch (error) {
     console.error('Error during transcription:', error);
   }
