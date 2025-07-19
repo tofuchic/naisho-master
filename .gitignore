@@ -5,3 +5,4 @@ dist/
 recordings/*
 !recordings/test*
 recordings/test*.txt
+recordings/test*.wav
