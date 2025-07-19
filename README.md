@@ -88,7 +88,7 @@ wget <モデルのダウンロードURL>
 
 ```bash
 # llama.cppディレクトリで
-./server -m models/<ダウンロードしたモデル名>.gguf -ngl 32 --port 8080
+./build/bin/llama-server -m models/<ダウンロードしたモデル名>.gguf -ngl 32 --port 8080
 ```
 
 ### 4. 動作確認
