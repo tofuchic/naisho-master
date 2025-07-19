@@ -4,7 +4,17 @@ import { spawn } from 'child_process';
 import { transcribeAudio } from './transcription';
 
 export async function processTranscription(filePath: string): Promise<void> {
-  const absolutePath = path.resolve(filePath);
+  // 録音ファイルは必ずrecordingsディレクトリ基準で絶対パス化
+  // プロジェクトルートからrecordingsディレクトリを参照
+  const recordingsDir = path.resolve(__dirname, '../../recordings');
+  let absolutePath: string;
+  if (path.isAbsolute(filePath)) {
+    absolutePath = filePath;
+  } else if (filePath.startsWith('recordings/')) {
+    absolutePath = path.resolve(process.cwd(), filePath);
+  } else {
+    absolutePath = path.join(recordingsDir, filePath);
+  }
   console.log(`Processing transcription for file: ${absolutePath}`);
   await sleep(100);
   const fileReady = await waitForFile(absolutePath, 3, 200);

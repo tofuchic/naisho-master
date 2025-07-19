@@ -1,6 +1,6 @@
 import * as path from 'path';
 // Set environment variables so that nodewhisper uses the project's recordings directory.
-const recordingsDir = path.resolve(process.cwd(), 'recordings');
+const recordingsDir = path.resolve(__dirname, '../../recordings');
 process.env.WHISPER_RECORDINGS_DIR = recordingsDir;
 process.env.WHISPER_CPP_RECORDINGS_DIR = recordingsDir;
 process.env.WHISPER_WORKING_DIR = recordingsDir;

@@ -24,15 +24,14 @@ export class GameManager {
   private voiceConnection: VoiceConnection | null = null;
   private audioPlayer: AudioPlayer | null = null;
   private openai: OpenAI;
-  private recordingsDir: string = './recordings';
+  private recordingsDir: string = path.resolve(__dirname, '../../recordings');
   private isRecordingsDirInitialized: boolean = false;
   private audioRecorder: AudioRecorder | null = null;
 
   constructor() {
     // Set environment variables so that nodewhisper uses the project's recordings directory.
-    const recordingsAbsoluteDir = path.resolve(process.cwd(), 'recordings');
-    process.env.WHISPER_RECORDINGS_DIR = recordingsAbsoluteDir;
-    process.env.WHISPER_CPP_RECORDINGS_DIR = recordingsAbsoluteDir;
+    process.env.WHISPER_RECORDINGS_DIR = this.recordingsDir;
+    process.env.WHISPER_CPP_RECORDINGS_DIR = this.recordingsDir;
 
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY, // OpenAIのAPIキーを.envに設定

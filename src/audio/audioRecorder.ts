@@ -14,7 +14,10 @@ export class AudioRecorder {
   private ensureRecordingsDir: () => Promise<void>;
 
   constructor(recordingsDir: string, ensureRecordingsDir: () => Promise<void>) {
-    this.recordingsDir = recordingsDir;
+    // recordingsDirは必ず絶対パスで渡す
+    this.recordingsDir = path.isAbsolute(recordingsDir)
+      ? recordingsDir
+      : path.resolve(__dirname, '../../recordings');
     this.ensureRecordingsDir = ensureRecordingsDir;
   }
 
