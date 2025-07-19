@@ -9,18 +9,15 @@ import {
   VoiceConnectionStatus,
   EndBehaviorType,
 } from '@discordjs/voice';
-import prism from 'prism-media';
+// ...existing code...
 import OpenAI from 'openai';
 import { transcribeAudio } from '../utils/transcription';
 import path from 'path';
-import { spawn } from 'child_process';
-import fs from 'fs';
 import { promisify } from 'util';
-import { v4 as uuidv4 } from 'uuid'; // UUID生成用ライブラリを追加
-import PQueue from 'p-queue';
+import { AudioRecorder } from '../audio/audioRecorder';
+import { sleep, waitForFile } from '../utils/fileUtils';
 
-const mkdir = promisify(fs.mkdir);
-const ffmpegQueue = new PQueue({ concurrency: 1 }); // 最大2つのプロセスを同時実行
+const mkdir = promisify(require('fs').mkdir);
 
 export class GameManager {
   private isGameActive: boolean = false;
@@ -29,6 +26,7 @@ export class GameManager {
   private openai: OpenAI;
   private recordingsDir: string = './recordings';
   private isRecordingsDirInitialized: boolean = false;
+  private audioRecorder: AudioRecorder | null = null;
 
   constructor() {
     // Set environment variables so that nodewhisper uses the project's recordings directory.
@@ -90,7 +88,13 @@ export class GameManager {
     this.audioPlayer.play(resource);
 
     // Start listening to audio
-    this.listenToAudio();
+    this.audioRecorder = new AudioRecorder(
+      this.recordingsDir,
+      this.ensureRecordingsDir.bind(this)
+    );
+    if (this.voiceConnection) {
+      this.audioRecorder.listen(this.voiceConnection.receiver);
+    }
   }
 
   private async ensureRecordingsDir(): Promise<void> {
@@ -105,196 +109,11 @@ export class GameManager {
     }
   }
 
-  private listenToAudio(): void {
-    if (!this.voiceConnection) return;
+  // ...existing code...
 
-    const receiver = this.voiceConnection.receiver;
+  // ...existing code...
 
-    // Listen for when a user starts speaking
-    receiver.speaking.on('start', async (userId) => {
-      console.log(`User ${userId} started speaking`);
-
-      // Ensure the recordings directory exists
-      try {
-        await this.ensureRecordingsDir();
-      } catch (err) {
-        console.error('Error ensuring recordings directory:', err);
-        return;
-      }
-
-      await ffmpegQueue.add(async () => {
-        // Execute FFmpeg process for each speaking event
-        const uniqueFileName = `${userId}-${Date.now()}-${uuidv4()}-16k.wav`;
-        const outputPath = path.join(this.recordingsDir, uniqueFileName);
-
-        const audioStream = receiver.subscribe(userId, {
-          end: {
-            behavior: EndBehaviorType.AfterSilence,
-            duration: 1000, // Ends after 1 second of silence
-          },
-        });
-
-        // Start FFmpeg process (convert directly to 16kHz)
-        // prettier-ignore
-        const ffmpeg = spawn('ffmpeg', [
-          '-f',
-          's16le', // PCM format
-          '-ar',
-          '48000', // Input sampling rate
-          '-ac',
-          '2', // Number of channels
-          '-i',
-          'pipe:0', // Read from standard input
-          '-ar',
-          '16000', // Convert output sampling rate to 16kHz
-          '-acodec',
-          'pcm_s16le', // Specify output codec
-          '-f',
-          'wav',   // Specify output format as WAV
-          '-y', // Overwrite if file exists
-          path.resolve(outputPath), // Output file (absolute path)
-        ]);
-
-        const pcmStream = new prism.opus.Decoder({
-          rate: 48000,
-          channels: 2,
-          frameSize: 960,
-        });
-
-        // Pipe PCM data to FFmpeg
-        audioStream.pipe(pcmStream).pipe(ffmpeg.stdin);
-
-        // Log FFmpeg stderr
-        ffmpeg.stderr.on('data', (data) => {
-          console.error(`FFmpeg stderr: ${data.toString()}`);
-        });
-
-        // Handle FFmpeg process close
-        ffmpeg.on('close', async (code) => {
-          if (code === 0) {
-            console.log(`Audio converted to 16kHz and saved to ${outputPath}`);
-            if (!fs.existsSync(outputPath)) {
-              console.error(
-                `File not found after FFmpeg process: ${outputPath}`
-              );
-              return;
-            }
-            try {
-              await this.processTranscription(outputPath);
-            } catch (transcriptionError) {
-              console.error('Error transcribing audio:', transcriptionError);
-            }
-          } else {
-            console.error(`FFmpeg process exited with code ${code}`);
-          }
-        });
-
-        // Handle FFmpeg errors
-        ffmpeg.on('error', (error) => {
-          console.error('FFmpeg error:', error);
-          console.error('FFmpeg command:', ffmpeg.spawnargs.join(' '));
-          if (!ffmpeg.killed) {
-            ffmpeg.kill('SIGKILL');
-          }
-        });
-
-        // Handle audio stream close
-        audioStream.on('close', async () => {
-          console.log(`Audio stream for user ${userId} has closed.`);
-          if (!ffmpeg.killed) {
-            await new Promise((resolve) => setTimeout(resolve, 200));
-            ffmpeg.stdin.end();
-          }
-        });
-
-        // Handle audio stream errors
-        audioStream.on('error', (error) => {
-          console.error(`Audio stream error for user ${userId}:`, error);
-        });
-      });
-    });
-
-    // Listen for when a user stops speaking, then allow new recordings for the same user
-    receiver.speaking.on('end', (userId) => {
-      console.log(`User ${userId} finished speaking.`);
-    });
-  }
-
-  private async processTranscription(filePath: string): Promise<void> {
-    const absolutePath = path.resolve(filePath);
-    console.log(`Processing transcription for file: ${absolutePath}`);
-    // Wait briefly to ensure file system is finalized
-    await this.sleep(100);
-    // Retry waiting for file to be fully available
-    const fileReady = await this.waitForFile(absolutePath, 3, 200);
-    if (!fileReady) {
-      console.warn(
-        `File not available after waiting: ${absolutePath}. Skipping transcription.`
-      );
-      return;
-    }
-    let finalPath = absolutePath;
-    const stats = fs.statSync(finalPath);
-    if (stats.size < 16000) {
-      console.log('Audio file is too short, padding with silence...');
-      const paddedFilePath = finalPath.replace('.wav', '-padded.wav');
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const ffmpeg = spawn('ffmpeg', [
-            '-i',
-            finalPath,
-            '-af',
-            'apad=pad_dur=1',
-            '-y',
-            paddedFilePath,
-          ]);
-          ffmpeg.on('close', (code) => {
-            if (code === 0) {
-              console.log(`Padded file created: ${paddedFilePath}`);
-              resolve();
-            } else {
-              reject(new Error(`FFmpeg exited with code ${code}`));
-            }
-          });
-        });
-        finalPath = paddedFilePath;
-      } catch (error) {
-        console.error('Error padding audio file:', error);
-        return;
-      }
-    }
-    console.log(`Starting transcription on file: ${finalPath}`);
-    try {
-      const transcription = await transcribeAudio(finalPath, false, true);
-      console.log('Transcription result:', transcription);
-    } catch (error) {
-      console.error('Error during transcription:', error);
-    }
-  }
-
-  private async waitForFile(
-    filePath: string,
-    retries: number,
-    delay: number
-  ): Promise<boolean> {
-    for (let i = 0; i < retries; i++) {
-      if (fs.existsSync(filePath)) {
-        const stats = fs.statSync(filePath);
-        if (stats.size > 0) {
-          return true;
-        }
-      }
-      console.log(
-        `Waiting for file availability: ${filePath} (${i + 1}/${retries})`
-      );
-      await this.sleep(delay);
-    }
-    return fs.existsSync(filePath) && fs.statSync(filePath).size > 0;
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
+  // ...existing code...
 
   async endGame(interaction: CommandInteraction) {
     if (!this.isGameActive) {
