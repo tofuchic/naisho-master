@@ -64,7 +64,7 @@
 git submodule update --init --recursive
 cd llama.cpp
 # OpenCL対応でビルド（AMD GPU利用の場合）
-cmake -S . -B build -DLLAMA_OPENCL=ON
+cmake -S . -B build -DLLAMA_OPENCL=ON -DLLAMA_CURL=OFF
 cmake --build build --config Release
 # CPUのみの場合はOpenCLオプションなし
 # cmake -S . -B build
