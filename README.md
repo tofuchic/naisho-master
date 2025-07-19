@@ -71,6 +71,33 @@ cmake --build build --config Release
 # cmake --build build --config Release
 ```
 
+### 1EX. AMDのGPUアクセラレーションの有効化
+
+※参考文献: [llama.cppでllama 2を実行し、AMD Radeon RX 6900でGPUアクセラレーションを行う方法](https://qiita.com/lyricat/items/c963e6222b4b2432bdde)
+
+`amdgpu-install` コマンドのインストール
+
+```bash
+mkdir tmp | cd tmp
+wget https://repo.radeon.com/amdgpu-install/6.4.1/ubuntu/jammy/amdgpu-install_6.4.60401-1_all.deb
+sudo dpkg -i amdgpu-install_6.4.60401-1_all.deb
+cd ../ | rm -rf tmp
+```
+
+関連ライブラリのインストール
+
+```bash
+amdgpu-install --usecase=opencl,rocm
+sudo apt install ocl-icd-dev ocl-icd-opencl-dev opencl-headers libclblast-dev
+```
+
+再コンパイル
+
+```bash
+cmake -S . -B build -DLLAMA_OPENCL=ON -DLLAMA_CLBLAST=ON
+cmake --build build --config Release
+```
+
 ### 2. 日本語学習済みモデル（gguf形式）のダウンロード
 
 例: [ELYZA-japanese-Llama-2-7b-fast-instruct-gguf](https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-gguf)
