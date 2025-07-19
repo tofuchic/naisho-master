@@ -51,6 +51,12 @@
    npm start
    ```
 
+## アーキテクチャ選定（ADR）
+
+NGワード検出機能の実装方針については、ローカルLLM（llama.cpp + 日本語学習済みモデル）を採用しています。選定理由や比較検討内容は `docs/adr-ngword-llm.md` に記載しています。
+
+詳しくは [docs/adr-ngword-llm.md](docs/adr-ngword-llm.md) を参照してください。
+
 ## 使用方法
 
 1. DiscordサーバーにBotを招待します。
