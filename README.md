@@ -64,9 +64,11 @@
 git submodule update --init --recursive
 cd llama.cpp
 # OpenCL対応でビルド（AMD GPU利用の場合）
-make LLAMA_OPENCL=1
-# CPUのみの場合は通常ビルド
-# make
+cmake -S . -B build -DLLAMA_OPENCL=ON
+cmake --build build --config Release
+# CPUのみの場合はOpenCLオプションなし
+# cmake -S . -B build
+# cmake --build build --config Release
 ```
 
 ### 2. 日本語学習済みモデル（gguf形式）のダウンロード
