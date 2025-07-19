@@ -73,7 +73,7 @@ cmake --build build --config Release
 
 ### 2. 日本語学習済みモデル（gguf形式）のダウンロード
 
-例: [Japanese-LLaMA-2-7B-gguf](https://huggingface.co/karakuri/japanese-llama2-7b-gguf)
+例: [ELYZA-japanese-Llama-2-7b-fast-instruct-gguf](https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-gguf)
 
 ```bash
 # モデルファイルをllama.cpp/models/に保存
@@ -81,6 +81,8 @@ mkdir -p models
 cd models
 wget <モデルのダウンロードURL>
 ```
+
+例: `wget https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-fast-instruct-gguf`
 
 ### 3. APIサーバの起動
 
