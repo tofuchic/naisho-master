@@ -51,13 +51,57 @@
    npm start
    ```
 
-## ローカルLLM（llama.cpp）APIサーバのセットアップ手順
+## ローカルLLM APIサーバのセットアップ手順
 
-このBotの文字起こし精度向上には、llama.cppをAPIサーバとしてローカルで起動する必要があります。
+このBotの文字起こし精度向上には、ローカルLLM APIサーバ（Ollamaまたはllama.cpp）を起動する必要があります。
 
-### 1. llama.cppサブモジュールの初期化・ビルド
+### 推奨: Ollamaによるセットアップ
 
-このリポジトリはllama.cppをgit submoduleとして管理しています。clone後、以下のコマンドでサブモジュールを初期化・更新してください。
+#### 1. Ollamaのインストール
+
+公式手順: https://ollama.com/download
+
+Linuxの場合（WSL2含む）:
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+#### 2. モデルの導入（例: gemma3）
+
+```bash
+ollama pull gemma:3b
+# 他のモデル例: ollama pull llama2:7b
+```
+
+#### 3. APIサーバの起動
+
+Ollamaはインストール後、自動でAPIサーバ（http://localhost:11434）を起動します。
+
+#### 4. WSL2のネットワーク設定（必要に応じて）
+
+WSL2からWindows側のlocalhostへAPI接続する場合、WSL2のNW接続をNATからmirroredに変更してください。
+
+```bash
+# PowerShell（管理者）で実行
+wsl --shutdown
+wsl --set-default-network mirrored
+wsl
+```
+
+詳細: https://learn.microsoft.com/ja-jp/windows/wsl/networking
+
+#### 5. 動作確認
+
+```bash
+curl http://localhost:11434/api/generate -d '{"model": "gemma:3b", "prompt": "こんにちは。元気ですか？"}'
+```
+
+---
+
+### オプション: llama.cppによるセットアップ
+
+このリポジトリはllama.cppをgit submoduleとして管理しています。clone後、以下のコマンドでサブモジュールを初期化・ビルドしてください。
 
 ```bash
 # 親リポジトリをcloneした直後に実行
@@ -71,34 +115,7 @@ cmake --build build --config Release
 # cmake --build build --config Release
 ```
 
-### 1EX. AMDのGPUアクセラレーションの有効化
-
-※参考文献: [llama.cppでllama 2を実行し、AMD Radeon RX 6900でGPUアクセラレーションを行う方法](https://qiita.com/lyricat/items/c963e6222b4b2432bdde)
-
-`amdgpu-install` コマンドのインストール
-
-```bash
-mkdir tmp | cd tmp
-wget https://repo.radeon.com/amdgpu-install/6.4.1/ubuntu/jammy/amdgpu-install_6.4.60401-1_all.deb
-sudo dpkg -i amdgpu-install_6.4.60401-1_all.deb
-cd ../ | rm -rf tmp
-```
-
-関連ライブラリのインストール
-
-```bash
-amdgpu-install --usecase=opencl,rocm
-sudo apt install ocl-icd-dev ocl-icd-opencl-dev opencl-headers libclblast-dev
-```
-
-再コンパイル
-
-```bash
-cmake -S . -B build -DLLAMA_OPENCL=ON -DLLAMA_CLBLAST=ON
-cmake --build build --config Release
-```
-
-### 2. 日本語学習済みモデル（gguf形式）のダウンロード
+#### 日本語学習済みモデル（gguf形式）のダウンロード
 
 例: [ELYZA-japanese-Llama-2-7b-fast-instruct-gguf](https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-gguf)
 
@@ -109,22 +126,20 @@ cd models
 wget <モデルのダウンロードURL>
 ```
 
-例: `wget https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-fast-instruct-gguf/resolve/main/ELYZA-japanese-Llama-2-7b-fast-instruct-q4_0.gguf`
-
-### 3. APIサーバの起動
+#### APIサーバの起動
 
 ```bash
 # llama.cppディレクトリで
 ./build/bin/llama-server -m models/<ダウンロードしたモデル名>.gguf -ngl 32 --port 8080
 ```
 
-### 4. 動作確認
+#### 動作確認
 
 curl -X POST http://localhost:8080/completion \
  -H "Content-Type: application/json" \
  -d '{"prompt": "こんにちは。元気ですか？", "max_tokens": 100}'
 
-Botの文字起こし修正機能はこのAPIサーバに依存します。
+Botの文字起こし修正機能はローカルLLM APIサーバ（Ollamaまたはllama.cpp）に依存します。
 
 ---
 
