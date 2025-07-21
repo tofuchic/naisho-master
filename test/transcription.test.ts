@@ -42,7 +42,7 @@ describe('transcribeAudio Tests', () => {
       '../recordings/test_audio_16bit_16k.pcm'
     );
 
-    const result = await transcribeAudio(testFilePath, true, true);
+    const result = await transcribeAudio(testFilePath, true);
 
     expect(result.length).toBeGreaterThan(0);
     expect(result).toContain('発言');
@@ -55,7 +55,7 @@ describe('transcribeAudio Tests', () => {
       '../recordings/test_audio_16bit_48k.pcm'
     );
 
-    const result = await transcribeAudio(testFilePath, true, true);
+    const result = await transcribeAudio(testFilePath, true);
 
     expect(result.length).toBeGreaterThan(0);
     expect(result).toContain('発言');

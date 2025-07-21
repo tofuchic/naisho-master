@@ -28,7 +28,15 @@
 
 ## セットアップ
 
-2. 必要な依存関係をインストールします:
+### 手順の前提
+
+- WindowsでWSL2を使ってアプリケーションを開発・ビルド・動作させます
+  - 一部のサブシステムは、WSL2を使わず、Windows上で動作させます
+- 本リポジトリはWSL2内にgit cloneしているものとします
+
+### セットアップ手順
+
+1. 必要な依存関係をインストールします:
    ```bash
    npm install
    ```
@@ -50,6 +58,108 @@
    ```bash
    npm start
    ```
+
+## ローカルLLM APIサーバのセットアップ手順
+
+このBotの文字起こし精度向上には、ローカルLLM APIサーバ（Ollamaまたはllama.cpp）を起動する必要があります。
+
+### 推奨: Ollamaによるセットアップ
+
+#### 1. Ollamaのインストール
+
+Windowsの場合（WSL2含む）:
+
+1. [公式 HP](https://ollama.com/download) からインストーラをダウンロードし、実行
+1. （必要に応じて拡張機能をインストール）
+   - [Page Assist - ローカルAIモデル用のWeb UI](https://chromewebstore.google.com/detail/jfgfiigpkhlkbnfnbobbkinehhfdhndo?utm_source=item-share-cb)
+1. （必要に応じてモデルのダウンロード先のディレクトリを変更）
+   - ![システムトレイにあるOllamaアイコンからSettingsを表示し、モデルの置き場をDドライブに変更したスクリーンショット](docs/images/ollama_settngs.png)
+
+#### 2. モデルの導入とAPIサーバの起動（例: gemma3）
+
+Ollamaの対応しているモデルを指定して実行する際に初回ダウンロードされます。
+
+- [ollama.com/library](https://ollama.com/library)
+
+```powershell
+ollama run gemma3
+```
+
+#### 3. WSL2のネットワーク設定（必要に応じて）
+
+WSL2からWindows側のlocalhostへAPI接続する場合、WSL2のNW接続をNATからmirroredに変更してください。
+
+```powershell
+wsl --set-default-network mirrored
+wsl --shutdown
+```
+
+詳細: https://learn.microsoft.com/ja-jp/windows/wsl/networking
+
+#### 4. 動作確認
+
+WSL2環境からアクセスできることを確認します
+
+```bash
+curl -X POST 'http://localhost:11434/api/chat' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "model": "gemma3",
+    "messages": [
+        {
+            "role": "user",
+            "content": "こんにちは。元気ですか？"
+        }
+    ],
+    "stream": false
+}'
+```
+
+---
+
+### オプション: llama.cppによるセットアップ
+
+このリポジトリはllama.cppをgit submoduleとして管理しています。clone後、以下のコマンドでサブモジュールを初期化・ビルドしてください。
+
+```bash
+# 親リポジトリをcloneした直後に実行
+git submodule update --init --recursive
+cd llama.cpp
+# OpenCL対応でビルド（AMD GPU利用の場合）
+cmake -S . -B build -DLLAMA_OPENCL=ON -DLLAMA_CURL=OFF
+cmake --build build --config Release
+# CPUのみの場合はOpenCLオプションなし
+# cmake -S . -B build
+# cmake --build build --config Release
+```
+
+#### 日本語学習済みモデル（gguf形式）のダウンロード
+
+例: [ELYZA-japanese-Llama-2-7b-fast-instruct-gguf](https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-gguf)
+
+```bash
+# モデルファイルをllama.cpp/models/に保存
+mkdir -p models
+cd models
+wget <モデルのダウンロードURL>
+```
+
+#### APIサーバの起動
+
+```bash
+# llama.cppディレクトリで
+./build/bin/llama-server -m models/<ダウンロードしたモデル名>.gguf -ngl 32 --port 8080
+```
+
+#### 動作確認
+
+```bash
+curl -X POST http://localhost:8080/completion \
+ -H "Content-Type: application/json" \
+ -d '{"prompt": "こんにちは。元気ですか？", "max_tokens": 100}'
+```
+
+---
 
 ## アーキテクチャ選定（ADR）
 
