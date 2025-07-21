@@ -153,11 +153,11 @@ wget <モデルのダウンロードURL>
 
 #### 動作確認
 
+```bash
 curl -X POST http://localhost:8080/completion \
  -H "Content-Type: application/json" \
  -d '{"prompt": "こんにちは。元気ですか？", "max_tokens": 100}'
-
-Botの文字起こし修正機能はローカルLLM APIサーバ（Ollamaまたはllama.cpp）に依存します。
+```
 
 ---
 
