@@ -67,42 +67,52 @@
 
 #### 1. Ollamaのインストール
 
-公式手順: https://ollama.com/download
+Windowsの場合（WSL2含む）:
 
-Linuxの場合（WSL2含む）:
+1. [公式 HP](https://ollama.com/download) からインストーラをダウンロードし、実行
+1. （必要に応じて拡張機能をインストール）
+   - [Page Assist - ローカルAIモデル用のWeb UI](https://chromewebstore.google.com/detail/jfgfiigpkhlkbnfnbobbkinehhfdhndo?utm_source=item-share-cb)
+1. （必要に応じてモデルのダウンロード先のディレクトリを変更）
+   - ![システムトレイにあるOllamaアイコンからSettingsを表示し、モデルの置き場をDドライブに変更したスクリーンショット](docs/images/ollama_settngs.png)
 
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
+#### 2. モデルの導入とAPIサーバの起動（例: gemma3）
+
+Ollamaの対応しているモデルを指定して実行する際に初回ダウンロードされます。
+
+- [ollama.com/library](https://ollama.com/library)
+
+```powershell
+ollama run gemma3
 ```
 
-#### 2. モデルの導入（例: gemma3）
-
-```bash
-ollama pull gemma:3b
-# 他のモデル例: ollama pull llama2:7b
-```
-
-#### 3. APIサーバの起動
-
-Ollamaはインストール後、自動でAPIサーバ（http://localhost:11434）を起動します。
-
-#### 4. WSL2のネットワーク設定（必要に応じて）
+#### 3. WSL2のネットワーク設定（必要に応じて）
 
 WSL2からWindows側のlocalhostへAPI接続する場合、WSL2のNW接続をNATからmirroredに変更してください。
 
-```bash
-# PowerShell（管理者）で実行
-wsl --shutdown
+```powershell
 wsl --set-default-network mirrored
-wsl
+wsl --shutdown
 ```
 
 詳細: https://learn.microsoft.com/ja-jp/windows/wsl/networking
 
-#### 5. 動作確認
+#### 4. 動作確認
+
+WSL2環境からアクセスできることを確認します
 
 ```bash
-curl http://localhost:11434/api/generate -d '{"model": "gemma:3b", "prompt": "こんにちは。元気ですか？"}'
+curl -X POST 'http://localhost:11434/api/chat' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "model": "gemma3",
+    "messages": [
+        {
+            "role": "user",
+            "content": "こんにちは。元気ですか？"
+        }
+    ],
+    "stream": false
+}'
 ```
 
 ---
