@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
-import { transcribeAudio } from './transcription';
+import { transcribeAudio, refineTranscriptionWithLLM } from './transcription';
 
 export async function processTranscription(filePath: string): Promise<void> {
   // 録音ファイルは必ずrecordingsディレクトリ基準で絶対パス化
@@ -58,6 +58,10 @@ export async function processTranscription(filePath: string): Promise<void> {
   try {
     const transcription = await transcribeAudio(finalPath, false);
     console.log('Transcription result:', transcription);
+    // LLMで文脈修正
+    const refined = await refineTranscriptionWithLLM(transcription);
+    console.log('Refined transcription:', refined);
+
     console.log(
       'Transcription process completed. Cleaning up the recorded file: ',
       finalPath

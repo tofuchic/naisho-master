@@ -13,7 +13,7 @@ import fetch from 'node-fetch'; // npm install node-fetch
 /**
  * ローカルLLM API（llama.cpp等）に文字起こし結果を送信し、文脈を考慮した修正済みテキストを取得
  */
-async function refineTranscriptionWithLLM(
+export async function refineTranscriptionWithLLM(
   transcription: string
 ): Promise<string> {
   const endpoint = 'http://localhost:8080/completion'; // llama.cppのAPIエンドポイント
@@ -59,10 +59,7 @@ export async function transcribeAudio(
       },
     });
     console.log('Transcription result:', transcription);
-    // LLMで文脈修正
-    const refined = await refineTranscriptionWithLLM(transcription);
-    console.log('Refined transcription:', refined);
-    return refined;
+    return transcription;
   } catch (error) {
     console.error('Error during transcription:', error);
     throw error;
